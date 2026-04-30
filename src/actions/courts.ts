@@ -1,86 +1,61 @@
-"use server";
+'use server';
 
-import { prisma } from "@/lib/prisma";
-import { courtSchema, CourtInput, businessHourSchema, BusinessHourInput } from "@/lib/schemas";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
 
-// --- 1. OBTENER CANCHAS Y HORARIOS ---
+// Obtener todas las canchas
 export async function getCourts() {
   try {
     const courts = await prisma.court.findMany({
+      orderBy: { createdAt: 'desc' },
       include: {
-        businessHours: {
-          orderBy: { dayOfWeek: 'asc' }
-        }
-      },
-      orderBy: { name: 'asc' }
+        businessHours: true, // Traemos también los horarios configurados
+      }
     });
     return { success: true, data: courts };
   } catch (error) {
-    console.error("Error fetching courts:", error);
-    return { success: false, error: "Error interno al obtener las canchas" };
+    console.error('Error fetching courts:', error);
+    return { success: false, error: 'Error al cargar las canchas.' };
   }
 }
 
-// --- 2. ABM DE CANCHA ---
-export async function upsertCourt(id: string | null, payload: CourtInput) {
-  const parsed = courtSchema.safeParse(payload);
-  if (!parsed.success) {
-    return { success: false, error: "Datos de cancha inválidos" };
-  }
-
+// Crear una cancha nueva
+export async function createCourt(data: { name: string; sport: string; isActive: boolean }) {
   try {
-    const court = id
-      ? await prisma.court.update({ where: { id }, data: parsed.data })
-      : await prisma.court.create({ data: parsed.data });
+    await prisma.court.create({
+      data: {
+        name: data.name,
+        sport: data.sport,
+        isActive: data.isActive,
+      },
+    });
 
-    revalidatePath("/admin/courts");
-    revalidatePath("/admin/calendar"); // Revalidamos el calendario por si cambió el nombre/estado
-    return { success: true, data: court };
-  } catch (error) {
-    console.error("Error upserting court:", error);
-    return { success: false, error: "Error al guardar la cancha en la base de datos" };
-  }
-}
-
-// --- 3. CONFIGURAR HORARIOS DE ATENCIÓN ---
-export async function upsertBusinessHours(courtId: string, payload: BusinessHourInput[]) {
-  const parsed = z.array(businessHourSchema).safeParse(payload);
-  if (!parsed.success) {
-    return { success: false, error: "Formato de horarios inválido" };
-  }
-
-  try {
-    // Transacción: Borramos los horarios anteriores de esa cancha y guardamos los nuevos
-    // Esto evita duplicados o conflictos de Primary Key
-    await prisma.$transaction([
-      prisma.businessHour.deleteMany({ where: { courtId } }),
-      prisma.businessHour.createMany({ data: parsed.data })
-    ]);
-
-    revalidatePath("/admin/courts");
-    revalidatePath("/admin/calendar"); // Vital para que la grilla de turnos se regenere
+    revalidatePath('/admin/courts');
+    revalidatePath('/reservas');
     return { success: true };
   } catch (error) {
-    console.error("Error saving business hours:", error);
-    return { success: false, error: "Error al actualizar los horarios de la cancha" };
+    console.error('Error creating court:', error);
+    return { success: false, error: 'Error al crear la cancha.' };
   }
 }
 
-// --- 4. TOGGLE ESTADO (Activar/Desactivar) ---
-export async function toggleCourtStatus(id: string, isActive: boolean) {
+// Actualizar una cancha existente
+export async function updateCourt(id: string, data: { name: string; sport: string; isActive: boolean }) {
   try {
     await prisma.court.update({
       where: { id },
-      data: { isActive }
+      data: {
+        name: data.name,
+        sport: data.sport,
+        isActive: data.isActive,
+      },
     });
 
-    revalidatePath("/admin/courts");
-    revalidatePath("/admin/calendar");
+    revalidatePath('/admin/courts');
+    revalidatePath('/reservas');
     return { success: true };
   } catch (error) {
-    console.error("Error toggling court status:", error);
-    return { success: false, error: "Error al cambiar el estado de la cancha" };
+    console.error('Error updating court:', error);
+    return { success: false, error: 'Error al actualizar la cancha.' };
   }
 }

@@ -13,8 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-// Importá tu action real si se llama distinto
-// import { createCourt, updateCourt } from '@/actions/courts';
+import { createCourt, updateCourt } from '@/actions/courts';
 
 interface CourtFormModalProps {
   court?: Court;
@@ -23,6 +22,8 @@ interface CourtFormModalProps {
 export default function CourtFormModal({ court }: CourtFormModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
     name: court?.name || '',
     sport: court?.sport || 'Padel',
@@ -32,14 +33,25 @@ export default function CourtFormModal({ court }: CourtFormModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     try {
-      // Acá va tu lógica de guardado:
-      // await (court ? updateCourt(court.id, formData) : createCourt(formData));
-      console.log('Guardando...', formData);
-      setIsOpen(false);
-    } catch (error) {
-      console.error("Error guardando la cancha:", error);
+      const result = court
+        ? await updateCourt(court.id, formData)
+        : await createCourt(formData);
+
+      if (result.success) {
+        setIsOpen(false);
+        // Si estamos creando una nueva, limpiamos el formulario para la próxima vez
+        if (!court) {
+          setFormData({ name: '', sport: 'Padel', isActive: true });
+        }
+      } else {
+        setError(result.error || 'Ocurrió un error inesperado');
+      }
+    } catch (err) {
+      console.error("Error en el submit:", err);
+      setError('Error de conexión con el servidor');
     } finally {
       setLoading(false);
     }
@@ -50,11 +62,11 @@ export default function CourtFormModal({ court }: CourtFormModalProps) {
       {/* @ts-expect-error - asChild evita que el menú se rompa */}
       <DialogTrigger asChild>
         {court ? (
-          <Button variant="ghost" size="icon">
-            <Edit className="h-4 w-4" />
+          <Button variant="outline" size="icon" title="Editar Cancha">
+            <Edit className="h-4 w-4 text-slate-700 dark:text-slate-300" />
           </Button>
         ) : (
-          <Button>
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="mr-2 h-4 w-4" /> Agregar Cancha
           </Button>
         )}
@@ -67,12 +79,12 @@ export default function CourtFormModal({ court }: CourtFormModalProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre</Label>
+            <Label htmlFor="name">Nombre de la Cancha</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ej: Cancha 1"
+              placeholder="Ej: Cancha 1 - Cristal"
               required
             />
           </div>
@@ -88,7 +100,7 @@ export default function CourtFormModal({ court }: CourtFormModalProps) {
             />
           </div>
 
-          <div className="flex items-center space-x-2 mt-4">
+          <div className="flex items-center space-x-2 mt-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
             <input
               type="checkbox"
               id="isActive"
@@ -96,14 +108,20 @@ export default function CourtFormModal({ court }: CourtFormModalProps) {
               onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
               className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
             />
-            <Label htmlFor="isActive">Cancha Activa</Label>
+            <Label htmlFor="isActive" className="cursor-pointer">Cancha habilitada para reservas</Label>
           </div>
 
-          <div className="pt-4 flex justify-end space-x-2 border-t dark:border-slate-700">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+          {error && (
+            <div className="text-sm text-red-600 font-medium bg-red-50 p-3 rounded-md border border-red-200">
+              {error}
+            </div>
+          )}
+
+          <div className="pt-4 flex justify-end space-x-2 border-t dark:border-slate-700 mt-6">
+            <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
               {loading ? 'Guardando...' : 'Guardar'}
             </Button>
           </div>
