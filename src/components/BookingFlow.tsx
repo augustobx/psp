@@ -1,161 +1,195 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, CheckCircle2 } from 'lucide-react';
-import BookingCalendar from './BookingCalendar';
-import { createBooking } from '@/actions/bookings';
+import { useState, useEffect } from 'react';
+import { Court } from '@prisma/client';
+import { getAvailableSlots, createBooking } from '@/actions/bookings';
 
-type Court = { id: string; name: string; type: string };
-type Slot = { start: string; end: string };
+interface BookingFlowProps {
+  courts: Court[];
+}
 
-export default function BookingFlow({ courts }: { courts: Court[] }) {
-  const [selectedCourt, setSelectedCourt] = useState<Court | null>(null);
+interface Slot {
+  start: string;
+  end: string;
+}
+
+export default function BookingFlow({ courts }: BookingFlowProps) {
+  const [selectedCourt, setSelectedCourt] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [availableSlots, setAvailableSlots] = useState<Slot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Mismos slots de demostración por ahora, en producción se cargarían dinámicamente según selectedCourt y fecha
-  const demoSlots = [
-    { start: '2026-05-01T10:00:00Z', end: '2026-05-01T11:00:00Z' },
-    { start: '2026-05-01T11:00:00Z', end: '2026-05-01T12:00:00Z' },
-    { start: '2026-05-01T15:00:00Z', end: '2026-05-01T16:00:00Z' },
-  ];
+  // TODO: En producción, este ID debería venir de la sesión del usuario (Auth)
+  const [userId, setUserId] = useState<string>('');
 
-  const handleSelectSlot = (slot: Slot) => {
-    setSelectedSlot(slot);
-    setIsModalOpen(true);
-    setSuccess(false);
-    setError(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // Cargar turnos disponibles cuando cambia la cancha o la fecha
+  useEffect(() => {
+    if (selectedCourt && selectedDate) {
+      setLoading(true);
+      getAvailableSlots(selectedCourt, selectedDate)
+        .then((slots) => {
+          setAvailableSlots(slots);
+          setSelectedSlot(null);
+          setMessage(null);
+        })
+        .catch(() => setMessage({ text: 'Error al cargar horarios.', type: 'error' }))
+        .finally(() => setLoading(false));
+    }
+  }, [selectedCourt, selectedDate]);
+
+  const handleBooking = async () => {
+    if (!selectedCourt || !selectedSlot || !userId) {
+      setMessage({ text: 'Por favor, completá todos los campos (Cancha, Horario y ID de Usuario).', type: 'error' });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+
+    // Precio estático para la demo. Deberías calcularlo según tu lógica de negocio.
+    const totalPrice = 15000;
+
+    const result = await createBooking({
+      courtId: selectedCourt,
+      userId: userId,
+      startTime: selectedSlot.start,
+      endTime: selectedSlot.end,
+      totalPrice: totalPrice, // Zod y el Action lo mapean internamente a totalAmount
+    });
+
+    if (result.success) {
+      setMessage({ text: '¡Reserva creada con éxito! Redirigiendo al pago...', type: 'success' });
+      setSelectedSlot(null);
+
+      // Recargar los turnos para que desaparezca el que acabamos de reservar
+      const updatedSlots = await getAvailableSlots(selectedCourt, selectedDate);
+      setAvailableSlots(updatedSlots);
+    } else {
+      setMessage({
+        text: typeof result.error === 'string' ? result.error : 'Error al procesar la reserva.',
+        type: 'error'
+      });
+    }
+
+    setLoading(false);
   };
 
-  const handleConfirmBooking = () => {
-    if (!selectedCourt || !selectedSlot) return;
-
-    startTransition(async () => {
-      // Usamos un userId de prueba genérico para la demostración
-      const testUserId = '00000000-0000-0000-0000-000000000000';
-      
-      const data = {
-        userId: testUserId,
-        courtId: selectedCourt.id,
-        startTime: selectedSlot.start,
-        endTime: selectedSlot.end,
-        totalPrice: 15000, // Precio fijo de prueba
-      };
-
-      const result = await createBooking(data);
-      
-      if (result.success) {
-        setSuccess(true);
-      } else {
-        setError(typeof result.error === 'string' ? result.error : 'Ocurrió un error al reservar.');
-      }
+  const formatTime = (isoString: string) => {
+    return new Date(isoString).toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
   return (
-    <div className="grid md:grid-cols-2 gap-8">
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">1. Selecciona la Cancha</h2>
-        <div className="grid gap-4">
-          {courts.length === 0 ? (
-            <p className="text-slate-500">No hay canchas disponibles.</p>
-          ) : (
-            courts.map(c => {
-              const isSelected = selectedCourt?.id === c.id;
-              return (
-                <Card 
-                  key={c.id} 
-                  className={`cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/10 ring-1 ring-blue-500' : 'hover:border-blue-400'}`}
-                  onClick={() => { setSelectedCourt(c); setSelectedSlot(null); }}
-                >
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">{c.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-slate-500">Tipo: {c.type}</p>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
+    <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mt-6">
+      <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">Reservar Turno</h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Selección de Cancha */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Seleccioná una Cancha
+          </label>
+          <select
+            value={selectedCourt}
+            onChange={(e) => setSelectedCourt(e.target.value)}
+            className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            <option value="">-- Elegir Cancha --</option>
+            {courts.map((court) => (
+              // Usamos court.sport como corresponde a tu esquema de Prisma
+              <option key={court.id} value={court.id}>
+                {court.name} ({court.sport})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Selección de Fecha */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Fecha
+          </label>
+          <input
+            type="date"
+            value={selectedDate}
+            min={new Date().toISOString().split('T')[0]}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+          />
         </div>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">2. Elige el Horario</h2>
-        {!selectedCourt ? (
-          <div className="h-48 flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-            <p className="text-slate-500 text-center">Selecciona una cancha primero<br/>para ver los horarios disponibles.</p>
-          </div>
-        ) : (
-          <BookingCalendar 
-            availableSlots={demoSlots} 
-            onSelectSlot={handleSelectSlot} 
-          />
-        )}
-      </div>
+      {/* Grilla de Horarios */}
+      {selectedCourt && selectedDate && (
+        <div className="mb-8">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-4">
+            Horarios Disponibles
+          </label>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Reserva</DialogTitle>
-            <DialogDescription>
-              Revisa los detalles de tu turno antes de confirmar.
-            </DialogDescription>
-          </DialogHeader>
-          
-          {success ? (
-            <div className="py-8 flex flex-col items-center justify-center space-y-4">
-              <CheckCircle2 className="h-16 w-16 text-green-500" />
-              <h3 className="text-xl font-semibold">¡Reserva Confirmada!</h3>
-              <p className="text-slate-500 text-center">Te esperamos el {new Date(selectedSlot?.start || '').toLocaleDateString()} a las {new Date(selectedSlot?.start || '').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}hs.</p>
-              <Button className="mt-4 w-full" onClick={() => setIsModalOpen(false)}>Cerrar</Button>
+          {loading && availableSlots.length === 0 ? (
+            <p className="text-slate-500">Buscando turnos...</p>
+          ) : availableSlots.length > 0 ? (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              {availableSlots.map((slot, index) => {
+                const isSelected = selectedSlot?.start === slot.start;
+                return (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`p-3 rounded-lg text-sm font-medium transition-all ${isSelected
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-600'
+                      }`}
+                  >
+                    {formatTime(slot.start)}
+                  </button>
+                );
+              })}
             </div>
           ) : (
-            <div className="space-y-4 pt-4">
-              <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Cancha:</span>
-                  <span className="font-semibold">{selectedCourt?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Fecha:</span>
-                  <span className="font-semibold">{selectedSlot && new Date(selectedSlot.start).toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Horario:</span>
-                  <span className="font-semibold">
-                    {selectedSlot && new Date(selectedSlot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - 
-                    {selectedSlot && new Date(selectedSlot.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-                <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-800 mt-2">
-                  <span className="text-slate-500 font-medium">Total a pagar en club:</span>
-                  <span className="font-bold text-lg">$15,000</span>
-                </div>
-              </div>
-
-              {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isPending}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleConfirmBooking} disabled={isPending}>
-                  {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Confirmar Turno
-                </Button>
-              </DialogFooter>
-            </div>
+            <p className="text-red-500 font-medium">No hay turnos disponibles para esta fecha.</p>
           )}
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
+      {/* Input de Usuario (Temporal hasta conectar Auth) */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          Tu ID de Usuario (Requerido por BD)
+        </label>
+        <input
+          type="text"
+          placeholder="Ej: d3b07384-d9a..."
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          className="w-full md:w-1/2 p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+        />
+      </div>
+
+      {/* Mensajes de feedback */}
+      {message && (
+        <div className={`p-4 mb-6 rounded-lg font-medium ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+          {message.text}
+        </div>
+      )}
+
+      {/* Botón de Confirmación */}
+      <div className="border-t border-slate-200 dark:border-slate-700 pt-6 mt-6">
+        <button
+          onClick={handleBooking}
+          disabled={!selectedSlot || !selectedCourt || loading || !userId}
+          className="w-full md:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-semibold rounded-lg transition-colors flex items-center justify-center"
+        >
+          {loading ? 'Procesando...' : 'Confirmar y Pagar'}
+        </button>
+      </div>
     </div>
   );
 }
