@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import BookingFlow from '@/components/BookingFlow';
 
 export default async function ReservasPage() {
-  const courts = await prisma.court.findMany({ where: { status: 'AVAILABLE' } });
+  const courts = await prisma.court.findMany({ where: { isActive: true } });
 
   return (
     <div className="min-h-screen p-8 bg-slate-50 dark:bg-slate-900">
