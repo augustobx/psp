@@ -39,7 +39,7 @@ export async function createBooking(data: unknown) {
         courtId,
         startTime,
         endTime,
-        totalPrice,
+        totalAmount: totalPrice, // <-- Asignamos el valor al campo correcto de la DB
         status: 'PENDING'
       }
     });

@@ -92,7 +92,6 @@ model Booking {
   user            User          @relation(fields: [userId], references: [id])
   startTime       DateTime
   endTime         DateTime
-  totalPrice      Float   
   status          BookingStatus @default(PENDING)
   paymentId       String?       // ID MercadoPago
   totalAmount     Decimal       @db.Decimal(10, 2)
