@@ -23,12 +23,12 @@ export const businessHourSchema = z.object({
   path: ["closeTime"],
 });
 
-// --- VALIDACIONES DE RESERVAS (CORREGIDO) ---
+// --- VALIDACIONES DE RESERVAS ---
 
 export const bookingSchema = z.object({
   courtId: z.string().uuid("Cancha inválida"),
-  userId: z.string().uuid("Usuario inválido"), // Agregado para el build
-  totalPrice: z.coerce.number().positive("Precio inválido"), // Agregado para el build
+  userId: z.string().uuid("Usuario inválido"),
+  totalPrice: z.coerce.number().positive("Precio inválido"),
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
 }).refine((data) => data.endTime > data.startTime, {
@@ -59,9 +59,22 @@ export const courtBlockSchema = z.object({
   path: ["endTime"],
 });
 
-// --- TIPOS INFERIDOS ---
+// --- VALIDACIONES DE TORNEOS ---
+
+export const tournamentSchema = z.object({
+  name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date(),
+  entryFee: z.coerce.number().min(0, "La inscripción no puede ser negativa"),
+}).refine((data) => data.endDate >= data.startDate, {
+  message: "La fecha de fin debe ser igual o posterior a la de inicio",
+  path: ["endDate"],
+});
+
+// --- TIPOS INFERIDOS PARA USAR EN EL FRONTEND ---
 export type CourtInput = z.infer<typeof courtSchema>;
 export type BusinessHourInput = z.infer<typeof businessHourSchema>;
 export type BookingInput = z.infer<typeof bookingSchema>;
 export type FixedBookingInput = z.infer<typeof fixedBookingSchema>;
 export type CourtBlockInput = z.infer<typeof courtBlockSchema>;
+export type TournamentInput = z.infer<typeof tournamentSchema>;
