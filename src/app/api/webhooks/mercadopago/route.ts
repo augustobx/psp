@@ -1,55 +1,38 @@
 import { NextResponse } from 'next/server';
+import { Payment, MercadoPagoConfig } from 'mercadopago';
 import { prisma } from '@/lib/prisma';
-import { MercadoPagoConfig, Payment } from 'mercadopago';
 
 const client = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN || '',
+  accessToken: process.env.MP_ACCESS_TOKEN as string,
 });
 
 export async function POST(request: Request) {
   try {
-    const url = new URL(request.url);
-    const type = url.searchParams.get('type') || url.searchParams.get('topic');
-    const dataId = url.searchParams.get('data.id') || url.searchParams.get('id');
+    const body = await request.json();
+    const { type, data } = body;
 
-    if (type === 'payment' && dataId) {
-      const paymentClient = new Payment(client);
-      const paymentInfo = await paymentClient.get({ id: dataId });
+    if (type === 'payment') {
+      const payment = new Payment(client);
+      const paymentInfo = await payment.get({ id: data.id });
 
-      const externalReference = paymentInfo.external_reference; // Booking ID
-      const status = paymentInfo.status;
+      if (paymentInfo.status === 'approved') {
+        const bookingId = paymentInfo.external_reference;
 
-      if (externalReference) {
-        let newStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'REFUNDED' = 'PENDING';
-        
-        if (status === 'approved') newStatus = 'APPROVED';
-        if (status === 'rejected') newStatus = 'REJECTED';
-        if (status === 'refunded') newStatus = 'REFUNDED';
-
-        // Actualizar Pago
-        await prisma.payment.updateMany({
-          where: { bookingId: externalReference },
-          data: { status: newStatus, mpPaymentId: dataId }
-        });
-
-        // Actualizar Reserva
-        if (newStatus === 'APPROVED') {
+        if (bookingId) {
           await prisma.booking.update({
-            where: { id: externalReference },
-            data: { status: 'CONFIRMED' }
-          });
-        } else if (newStatus === 'REJECTED') {
-          await prisma.booking.update({
-            where: { id: externalReference },
-            data: { status: 'CANCELLED' }
+            where: { id: bookingId },
+            data: {
+              status: 'CONFIRMED',
+              paymentId: String(paymentInfo.id),
+            },
           });
         }
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error('Webhook MP Error:', error);
+    console.error('Error en webhook de MercadoPago:', error);
     return NextResponse.json({ success: false }, { status: 500 });
   }
 }
