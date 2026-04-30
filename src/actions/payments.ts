@@ -34,7 +34,7 @@ export async function createPaymentPreference(bookingId: string) {
         ],
         payer: {
           email: booking.user.email,
-          name: booking.user.name,
+          name: booking.user.name ?? undefined,
         },
         back_urls: {
           success: `${process.env.NEXT_PUBLIC_APP_URL}/reservas/success`,
