@@ -1,35 +1,74 @@
-export const dynamic = 'force-dynamic';
-import { prisma } from '@/lib/prisma';
-import AdminDataTable from '@/components/AdminDataTable';
-import CourtFormModal from '@/components/CourtFormModal';
+import { getCourts } from "@/actions/courts";
+import { CourtFormModal } from "@/components/CourtFormModal";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { MapPin } from "lucide-react";
 
-export default async function AdminCourtsPage() {
-  const courts = await prisma.court.findMany({
-    orderBy: { createdAt: 'desc' }
-  });
+export default async function CourtsPage() {
+  const { data: courts, success } = await getCourts();
+
+  if (!success || !courts) {
+    return <div className="p-6 text-red-500">Error cargando las canchas.</div>;
+  }
 
   return (
-    <div className="p-8 space-y-8 min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestión de Canchas</h1>
-          <p className="text-slate-500 mt-1">Administra las canchas disponibles en el sistema.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Canchas</h1>
+          <p className="text-muted-foreground">Gestioná tus canchas y horarios de atención.</p>
         </div>
-        <CourtFormModal />
+        <CourtFormModal /> {/* Botón para crear nueva cancha */}
       </div>
 
-      <AdminDataTable 
-        data={courts}
-        columns={[
-          { key: 'name', header: 'Nombre' },
-          { key: 'type', header: 'Tipo' },
-          { key: 'status', header: 'Estado', render: (val) => (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${val === 'AVAILABLE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {String(val)}
-            </span>
-          )},
-        ]}
-      />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Canchas Registradas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Deporte</TableHead>
+                <TableHead>Horarios (Días activos)</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {courts.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                    No hay canchas registradas.
+                  </TableCell>
+                </TableRow>
+              )}
+              {courts.map((court) => (
+                <TableRow key={court.id}>
+                  <TableCell className="font-medium">{court.name}</TableCell>
+                  <TableCell>{court.sport}</TableCell>
+                  <TableCell>
+                    {court.businessHours.length} días configurados
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={court.isActive ? "default" : "destructive"}>
+                      {court.isActive ? "Activa" : "Inactiva"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <CourtFormModal court={court} /> {/* Botón para editar */}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

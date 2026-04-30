@@ -6,28 +6,25 @@ datasource db {
   provider = "mysql"
 }
 
+// ==========================================
+// ENUMS
+// ==========================================
 enum Role {
   ADMIN
   PLAYER
 }
 
-enum CourtStatus {
-  AVAILABLE
-  MAINTENANCE
-  INACTIVE
-}
-
 enum BookingStatus {
-  PENDING
-  CONFIRMED
+  PENDING   // Esperando pago (MercadoPago)
+  CONFIRMED // Pagado o asignado manualmente
   CANCELLED
 }
 
-enum PaymentStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  REFUNDED
+enum TournamentStatus {
+  DRAFT
+  REGISTRATION
+  ONGOING
+  COMPLETED
 }
 
 enum MatchStatus {
@@ -37,125 +34,185 @@ enum MatchStatus {
   CANCELLED
 }
 
+// ==========================================
+// CORE: USUARIOS, CANCHAS Y HORARIOS
+// ==========================================
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  name          String
-  phone         String?
-  passwordHash  String
-  role          Role      @default(PLAYER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  bookings      Booking[]
-  payments      Payment[]
-  participants  TournamentParticipant[]
+  id              String             @id @default(uuid())
+  email           String             @unique
+  name            String?
+  phone           String?
+  role            Role               @default(PLAYER)
+  
+  bookings        Booking[]
+  fixedBookings   FixedBooking[]
+  teamsAsPlayer1  TournamentTeam[]   @relation("Player1")
+  teamsAsPlayer2  TournamentTeam[]   @relation("Player2")
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 }
 
 model Court {
-  id          String      @id @default(uuid())
-  name        String
-  type        String      // ej: Padel, Tenis, Futbol 5
-  status      CourtStatus @default(AVAILABLE)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  bookings    Booking[]
+  id              String             @id @default(uuid())
+  name            String
+  sport           String             @default("Padel")
+  isActive        Boolean            @default(true)
+  
+  bookings        Booking[]
+  fixedBookings   FixedBooking[]
+  blocks          CourtBlock[]
+  businessHours   BusinessHour[]
+  tournamentMatches TournamentMatch[]
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 }
 
+model BusinessHour {
+  id              String   @id @default(uuid())
+  courtId         String
+  court           Court    @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  dayOfWeek       Int      // 0 = Domingo, 1 = Lunes, ..., 6 = Sábado
+  openTime        String   // "HH:mm"
+  closeTime       String   // "HH:mm"
+  slotDuration    Int      @default(90) // Duración en minutos
+
+  @@unique([courtId, dayOfWeek])
+}
+
+// ==========================================
+// MOTOR DE RESERVAS Y DISPONIBILIDAD
+// ==========================================
 model Booking {
-  id          String        @id @default(uuid())
-  userId      String
-  courtId     String
-  startTime   DateTime
-  endTime     DateTime
-  status      BookingStatus @default(PENDING)
-  totalPrice  Decimal       @db.Decimal(10, 2)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  user        User          @relation(fields: [userId], references: [id])
-  court       Court         @relation(fields: [courtId], references: [id])
-  payment     Payment?
-}
-
-model Payment {
   id              String        @id @default(uuid())
-  bookingId       String?       @unique
+  courtId         String
+  court           Court         @relation(fields: [courtId], references: [id])
   userId          String
-  amount          Decimal       @db.Decimal(10, 2)
-  status          PaymentStatus @default(PENDING)
-  mpPreferenceId  String?       @unique
-  mpPaymentId     String?       @unique // ID del Webhook
+  user            User          @relation(fields: [userId], references: [id])
+  startTime       DateTime
+  endTime         DateTime
+  status          BookingStatus @default(PENDING)
+  paymentId       String?       // ID MercadoPago
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  booking         Booking?      @relation(fields: [bookingId], references: [id])
-  user            User          @relation(fields: [userId], references: [id])
+  @@index([courtId, startTime, endTime])
 }
 
-model Tournament {
-  id          String      @id @default(uuid())
-  name        String
-  startDate   DateTime
-  endDate     DateTime?
-  status      String      // DRAFT, REGISTRATION, ACTIVE, COMPLETED
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+model FixedBooking {
+  id              String   @id @default(uuid())
+  courtId         String
+  court           Court    @relation(fields: [courtId], references: [id])
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  dayOfWeek       Int      // 0 = Domingo, 1 = Lunes...
+  startTime       String   // "HH:mm"
+  endTime         String   // "HH:mm"
+  startDate       DateTime // Inicio vigencia abono
+  endDate         DateTime // Fin vigencia abono
+  isActive        Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  categories  Category[]
+  @@index([courtId, dayOfWeek])
 }
 
-model Category {
-  id            String      @id @default(uuid())
-  tournamentId  String
-  name          String      // ej: 1ra, 2da, 3ra, Libres
-  level         Int         // Para ordenar/clasificar
+model CourtBlock {
+  id              String   @id @default(uuid())
+  courtId         String
+  court           Court    @relation(fields: [courtId], references: [id])
+  startTime       DateTime
+  endTime         DateTime
+  reason          String?  // Ej: "Lluvia", "Mantenimiento"
+  
+  createdAt       DateTime @default(now())
 
-  tournament    Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  participants  TournamentParticipant[]
-  matches       Match[]
+  @@index([courtId, startTime, endTime])
 }
 
-model TournamentParticipant {
-  id          String      @id @default(uuid())
-  userId      String
-  categoryId  String
-  status      String      // PENDING_PAYMENT, CONFIRMED
-  joinedAt    DateTime    @default(now())
-
-  user        User        @relation(fields: [userId], references: [id])
-  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-}
-
-model Match {
-  id          String      @id @default(uuid())
-  categoryId  String
-  round       Int         // ej: 1 (Octavos), 2 (Cuartos), 3 (Semi), 4 (Final)
-  player1Id   String?     // Puede ser null si pasa directo por bye
-  player2Id   String?
-  score1      Int?
-  score2      Int?
-  winnerId    String?
-  status      MatchStatus @default(SCHEDULED)
-  courtId     String?     // Cancha asignada (opcional)
-  matchTime   DateTime?   // Horario asignado (opcional)
-
-  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-}
-
+// ==========================================
+// FINANZAS Y CONFIGURACIÓN
+// ==========================================
 model Expense {
-  id          String    @id @default(uuid())
-  description String
-  amount      Decimal   @db.Decimal(10, 2)
-  date        DateTime  @default(now())
-  category    String    // ej: Mantenimiento, Servicios, Sueldos
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String   @id @default(uuid())
+  description     String
+  amount          Decimal  @db.Decimal(10, 2)
+  date            DateTime
+  category        String?
+  
+  createdAt       DateTime @default(now())
 }
 
-model Settings {
-  key         String    @id
-  value       String    @db.Text
-  updatedAt   DateTime  @updatedAt
+model Setting {
+  key             String   @id
+  value           String   @db.Text
+  updatedAt       DateTime @updatedAt
+}
+
+// ==========================================
+// TORNEOS (Aislados para Fase 7)
+// ==========================================
+model Tournament {
+  id              String             @id @default(uuid())
+  name            String
+  startDate       DateTime
+  endDate         DateTime
+  status          TournamentStatus   @default(DRAFT)
+  entryFee        Decimal            @db.Decimal(10, 2)
+  categories      TournamentCategory[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model TournamentCategory {
+  id              String             @id @default(uuid())
+  tournamentId    String
+  tournament      Tournament         @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  name            String
+  level           Int?               
+  teams           TournamentTeam[]
+  matches         TournamentMatch[]
+  @@unique([tournamentId, name])
+}
+
+model TournamentTeam {
+  id              String             @id @default(uuid())
+  categoryId      String
+  category        TournamentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name            String?
+  player1Id       String
+  player1         User               @relation("Player1", fields: [player1Id], references: [id])
+  player2Id       String?
+  player2         User?              @relation("Player2", fields: [player2Id], references: [id])
+  isPaid          Boolean            @default(false)
+  matchesAsTeam1  TournamentMatch[]  @relation("MatchTeam1")
+  matchesAsTeam2  TournamentMatch[]  @relation("MatchTeam2")
+  matchesWon      TournamentMatch[]  @relation("MatchWinner")
+  createdAt       DateTime           @default(now())
+}
+
+model TournamentMatch {
+  id              String             @id @default(uuid())
+  categoryId      String
+  category        TournamentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  round           Int
+  matchOrder      Int
+  nextMatchId     String?
+  team1Id         String?
+  team1           TournamentTeam?    @relation("MatchTeam1", fields: [team1Id], references: [id])
+  team2Id         String?
+  team2           TournamentTeam?    @relation("MatchTeam2", fields: [team2Id], references: [id])
+  scoreTeam1      String?
+  scoreTeam2      String?
+  winnerId        String?
+  winner          TournamentTeam?    @relation("MatchWinner", fields: [winnerId], references: [id])
+  courtId         String?
+  court           Court?             @relation(fields: [courtId], references: [id])
+  startTime       DateTime?
+  status          MatchStatus        @default(SCHEDULED)
+  @@index([categoryId, round, matchOrder])
 }
