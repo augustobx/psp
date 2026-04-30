@@ -15,19 +15,20 @@ export const businessHourSchema = z.object({
   closeTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Formato inválido (HH:mm)"),
   slotDuration: z.number().int().min(30).max(180),
 }).refine((data) => {
-  // Validación básica: la hora de cierre debe ser posterior a la de apertura
   const open = parseInt(data.openTime.replace(":", ""));
   const close = parseInt(data.closeTime.replace(":", ""));
-  return close > open || close === 0; // Contempla si cierra a las 00:00
+  return close > open || close === 0;
 }, {
   message: "La hora de cierre debe ser posterior a la apertura",
   path: ["closeTime"],
 });
 
-// --- VALIDACIONES DE RESERVAS ---
+// --- VALIDACIONES DE RESERVAS (CORREGIDO) ---
 
 export const bookingSchema = z.object({
   courtId: z.string().uuid("Cancha inválida"),
+  userId: z.string().uuid("Usuario inválido"), // Agregado para el build
+  totalPrice: z.coerce.number().positive("Precio inválido"), // Agregado para el build
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
 }).refine((data) => data.endTime > data.startTime, {
@@ -58,7 +59,7 @@ export const courtBlockSchema = z.object({
   path: ["endTime"],
 });
 
-// --- TIPOS INFERIDOS PARA USAR EN EL FRONTEND ---
+// --- TIPOS INFERIDOS ---
 export type CourtInput = z.infer<typeof courtSchema>;
 export type BusinessHourInput = z.infer<typeof businessHourSchema>;
 export type BookingInput = z.infer<typeof bookingSchema>;

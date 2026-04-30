@@ -11,9 +11,8 @@ export async function createBooking(data: unknown) {
     return { success: false, error: result.error.flatten() };
   }
 
+  // Ahora el desestructurado funciona porque el esquema tiene userId y totalPrice
   const { courtId, startTime, endTime, userId, totalPrice } = result.data;
-  const start = new Date(startTime);
-  const end = new Date(endTime);
 
   try {
     // 1. Verificar superposición
@@ -22,9 +21,9 @@ export async function createBooking(data: unknown) {
         courtId,
         status: { in: ['PENDING', 'CONFIRMED'] },
         OR: [
-          { startTime: { lt: end, gte: start } },
-          { endTime: { gt: start, lte: end } },
-          { startTime: { lte: start }, endTime: { gte: end } }
+          { startTime: { lt: endTime, gte: startTime } },
+          { endTime: { gt: startTime, lte: endTime } },
+          { startTime: { lte: startTime }, endTime: { gte: endTime } }
         ]
       }
     });
@@ -38,8 +37,8 @@ export async function createBooking(data: unknown) {
       data: {
         userId,
         courtId,
-        startTime: start,
-        endTime: end,
+        startTime,
+        endTime,
         totalPrice,
         status: 'PENDING'
       }
@@ -56,7 +55,6 @@ export async function createBooking(data: unknown) {
 }
 
 export async function getAvailableSlots(courtId: string, date: string) {
-  // Lógica simple para devolver turnos disponibles de 1 hora entre las 8:00 y las 23:00
   const targetDate = new Date(date);
   targetDate.setHours(0, 0, 0, 0);
 
