@@ -28,7 +28,7 @@ export async function createPaymentPreference(bookingId: string) {
             id: booking.id,
             title: `Reserva Cancha ${booking.court.name}`,
             quantity: 1,
-            unit_price: Number(booking.totalPrice),
+            unit_price: Number(booking.totalAmount), // <-- CORRECCIÓN ACÁ
             currency_id: 'ARS',
           }
         ],
