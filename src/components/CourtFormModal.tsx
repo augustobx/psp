@@ -71,6 +71,7 @@ export function CourtFormModal({ court }: { court?: any }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      {/* @ts-expect-error - asChild evita que el menú se rompa */}
       <DialogTrigger asChild>
         {court ? (
           <Button variant="ghost" size="icon">
