@@ -1,12 +1,15 @@
 import { getCourts } from "@/actions/courts";
-// CORRECCIÓN: Importación por defecto, sin llaves
 import CourtFormModal from "@/components/CourtFormModal";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default async function CourtsPage() {
-  const courts = await getCourts();
+  // Obtenemos la respuesta de la action
+  const response = await getCourts();
+
+  // Extraemos el array asegurándonos de que success sea true, si no, devolvemos array vacío
+  const courts = response.success && response.data ? response.data : [];
 
   return (
     <div className="p-6">
@@ -47,7 +50,7 @@ export default async function CourtsPage() {
               {courts.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-6 text-slate-500">
-                    No hay canchas registradas.
+                    {response.error || "No hay canchas registradas."}
                   </TableCell>
                 </TableRow>
               )}
