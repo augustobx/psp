@@ -1,8 +1,4 @@
-diff--git a / src / components / AdminSidebar.tsx b / src / components / AdminSidebar.tsx
-index e85653653948f18d2d0850a32244d776291edc86..5c1a647b46d2828d03436c9d413a16494b35648b 100644
---- a / src / components / AdminSidebar.tsx
-+++ b / src / components / AdminSidebar.tsx
-@@ -1, 75 + 1, 78 @@
+
 'use client';
 
 import Link from 'next/link';
