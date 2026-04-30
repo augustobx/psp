@@ -4,9 +4,9 @@ import { createPool } from 'mariadb';
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
-// String de conexión directo. Si pusiste otra clave en phpMyAdmin, cambiala acá.
-const pool = createPool("mariadb://root:Basq2121@127.0.0.1:3306/pspdb?connectionLimit=10");
-
+// Usamos la URL del .env. En Linux el driver mariadb no tiene el bug de Windows.
+const connectionString = process.env.DATABASE_URL as string;
+const pool = createPool(connectionString);
 const adapter = new PrismaMariaDb(pool);
 
 export const prisma =
