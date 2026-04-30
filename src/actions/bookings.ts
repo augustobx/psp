@@ -1,12 +1,12 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { BookingSchema } from '@/lib/schemas';
+import { bookingSchema } from '@/lib/schemas';
 import { revalidatePath } from 'next/cache';
 
 export async function createBooking(data: unknown) {
-  const result = BookingSchema.safeParse(data);
-  
+  const result = bookingSchema.safeParse(data);
+
   if (!result.success) {
     return { success: false, error: result.error.flatten() };
   }
@@ -59,7 +59,7 @@ export async function getAvailableSlots(courtId: string, date: string) {
   // Lógica simple para devolver turnos disponibles de 1 hora entre las 8:00 y las 23:00
   const targetDate = new Date(date);
   targetDate.setHours(0, 0, 0, 0);
-  
+
   const nextDay = new Date(targetDate);
   nextDay.setDate(nextDay.getDate() + 1);
 
@@ -78,7 +78,7 @@ export async function getAvailableSlots(courtId: string, date: string) {
     const slotEnd = new Date(targetDate);
     slotEnd.setHours(i + 1, 0, 0, 0);
 
-    const isBooked = bookings.some(b => 
+    const isBooked = bookings.some(b =>
       (b.startTime < slotEnd && b.endTime > slotStart)
     );
 
