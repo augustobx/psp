@@ -1,14 +1,12 @@
 import { getCourts } from "@/actions/courts";
 import CourtFormModal from "@/components/CourtFormModal";
+import CourtScheduleModal from "@/components/CourtScheduleModal"; // <-- Nuevo import
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default async function CourtsPage() {
-  // Obtenemos la respuesta de la action
   const response = await getCourts();
-
-  // Extraemos el array asegurándonos de que success sea true, si no, devolvemos array vacío
   const courts = response.success && response.data ? response.data : [];
 
   return (
@@ -43,7 +41,12 @@ export default async function CourtsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <CourtFormModal court={court} />
+                    <div className="flex justify-end space-x-2">
+                      {/* Botón de configuración de horarios */}
+                      <CourtScheduleModal court={court} />
+                      {/* Botón de edición de datos básicos */}
+                      <CourtFormModal court={court} />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
