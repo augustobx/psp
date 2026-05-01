@@ -1,16 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Lock, CalendarCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getAdminDayBookings, createAdminBooking, cancelAdminBooking } from '@/actions/admin-calendar';
-
-const START_HOUR = 8; // 08:00
-const END_HOUR = 23;  // 23:00
-const MINUTE_HEIGHT = 1.5; // 1 minuto = 1.5 pixels (Una hora = 90px)
 
 export default function AdminCalendar({ courts }: { courts: any[] }) {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -18,12 +14,11 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
     const [loading, setLoading] = useState(false);
     const [selectedCourtFilter, setSelectedCourtFilter] = useState('ALL');
 
-    // Estado del Modal
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'CREATE' | 'VIEW'>('CREATE');
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
+    const [dbError, setDbError] = useState<string | null>(null);
 
-    // Formulario de creación
     const [formData, setFormData] = useState({
         courtId: '',
         startTime: '',
@@ -54,55 +49,47 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
         ? courts
         : courts.filter(c => c.id === selectedCourtFilter);
 
-    const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => i + START_HOUR);
+    // Generamos intervalos de 30 minutos desde 08:00 hasta 23:30
+    const timeSlots: string[] = [];
+    for (let h = 8; h <= 23; h++) {
+        timeSlots.push(`${h.toString().padStart(2, '0')}:00`);
+        timeSlots.push(`${h.toString().padStart(2, '0')}:30`);
+    }
 
-    // Calcula top y height absoluto en base a la hora
-    const getBookingStyle = (startTime: Date, endTime: Date) => {
-        const startMins = (startTime.getHours() * 60 + startTime.getMinutes()) - (START_HOUR * 60);
-        const durationMins = (endTime.getTime() - startTime.getTime()) / 60000;
-        return {
-            top: `${startMins * MINUTE_HEIGHT}px`,
-            height: `${durationMins * MINUTE_HEIGHT}px`,
-        };
-    };
-
-    const handleEmptyClick = (courtId: string, hour: number, minutes: number) => {
-        const startStr = `${hour.toString().padStart(2, '0')}:${minutes === 0 ? '00' : '30'}`;
-        // Calcular fin por defecto (+90 min)
-        const endMins = hour * 60 + minutes + 90;
-        const endHour = Math.floor(endMins / 60).toString().padStart(2, '0');
-        const endMinStr = (endMins % 60).toString().padStart(2, '0');
+    const handleEmptyClick = (courtId: string, timeStr: string) => {
+        // Calculamos 90 minutos por defecto para Padel
+        const [h, m] = timeStr.split(':').map(Number);
+        const totalMins = h * 60 + m + 90;
+        const endH = Math.floor(totalMins / 60).toString().padStart(2, '0');
+        const endM = (totalMins % 60).toString().padStart(2, '0');
 
         setFormData({
             courtId,
-            startTime: startStr,
-            endTime: `${endHour}:${endMinStr}`,
+            startTime: timeStr,
+            endTime: `${endH}:${endM}`,
             type: 'RESERVA',
             clientName: ''
         });
+        setDbError(null);
         setModalMode('CREATE');
         setModalOpen(true);
     };
 
-    const handleBookingClick = (booking: any) => {
-        setSelectedBooking(booking);
-        setModalMode('VIEW');
-        setModalOpen(true);
-    };
-
     const submitCreate = async () => {
+        setDbError(null);
         const dateStr = new Date(currentDate.getTime() - currentDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
         const res = await createAdminBooking({ ...formData, dateStr } as any);
+
         if (res.success) {
             setModalOpen(false);
             loadData(currentDate);
         } else {
-            alert(res.error);
+            setDbError(res.error || 'Error desconocido');
         }
     };
 
     const handleCancelBooking = async () => {
-        if (confirm('¿Estás seguro de cancelar esto?')) {
+        if (confirm('¿Estás seguro de cancelar/borrar este turno?')) {
             await cancelAdminBooking(selectedBooking.id);
             setModalOpen(false);
             loadData(currentDate);
@@ -110,36 +97,45 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
     };
 
     const getBackgroundColor = (status: string) => {
-        if (status === 'BLOCKED') return 'bg-red-500 border-red-600 text-white';
-        if (status === 'FIXED') return 'bg-purple-500 border-purple-600 text-white';
-        if (status === 'PENDING') return 'bg-yellow-400 border-yellow-500 text-slate-900';
-        return 'bg-emerald-500 border-emerald-600 text-white'; // CONFIRMED
+        if (status === 'BLOCKED') return 'bg-red-50 hover:bg-red-100 border-red-200 text-red-800';
+        if (status === 'FIXED') return 'bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-800';
+        if (status === 'PENDING') return 'bg-yellow-50 hover:bg-yellow-100 border-yellow-200 text-yellow-800';
+        return 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-800'; // CONFIRMED
+    };
+
+    const getIcon = (status: string) => {
+        if (status === 'BLOCKED') return <Lock className="w-4 h-4 text-red-500 mr-2" />;
+        if (status === 'FIXED') return <CalendarCheck className="w-4 h-4 text-purple-500 mr-2" />;
+        return <CalendarCheck className="w-4 h-4 text-emerald-500 mr-2" />;
     };
 
     return (
-        <div className="space-y-4">
-            {/* Barra de Controles Superior */}
-            <div className="flex flex-wrap gap-4 items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center space-x-2">
-                    <Button variant="outline" onClick={() => changeDay(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-                    <div className="font-bold text-lg min-w-[200px] text-center">
-                        {currentDate.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+        <div className="space-y-6">
+            {/* Controles de Navegación Estilo Premium */}
+            <div className="flex flex-wrap gap-4 items-center justify-between bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center space-x-3">
+                    <Button variant="outline" className="rounded-full w-10 h-10 p-0" onClick={() => changeDay(-1)}>
+                        <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                    <div className="font-bold text-xl min-w-[220px] text-center text-slate-800 dark:text-slate-100">
+                        {currentDate.toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: 'long' }).replace(/^\w/, c => c.toUpperCase())}
                     </div>
-                    <Button variant="outline" onClick={() => changeDay(1)}><ChevronRight className="h-4 w-4" /></Button>
-                    <Button variant="secondary" onClick={() => setCurrentDate(new Date())}>Hoy</Button>
+                    <Button variant="outline" className="rounded-full w-10 h-10 p-0" onClick={() => changeDay(1)}>
+                        <ChevronRight className="h-5 w-5" />
+                    </Button>
+                    <Button variant="secondary" className="ml-2 rounded-xl" onClick={() => setCurrentDate(new Date())}>Hoy</Button>
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2 text-sm">
-                        <div className="flex items-center"><span className="w-3 h-3 bg-emerald-500 rounded-full mr-1"></span> Reserva</div>
-                        <div className="flex items-center"><span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span> Bloqueo</div>
-                        <div className="flex items-center"><span className="w-3 h-3 bg-purple-500 rounded-full mr-1"></span> Fijo</div>
+                    <div className="hidden md:flex items-center space-x-4 text-sm font-medium text-slate-600 dark:text-slate-300">
+                        <div className="flex items-center"><span className="w-3 h-3 bg-emerald-400 rounded-full mr-2"></span> Reserva</div>
+                        <div className="flex items-center"><span className="w-3 h-3 bg-red-400 rounded-full mr-2"></span> Bloqueo</div>
+                        <div className="flex items-center"><span className="w-3 h-3 bg-purple-400 rounded-full mr-2"></span> Fijo</div>
                     </div>
-
                     <select
                         value={selectedCourtFilter}
                         onChange={(e) => setSelectedCourtFilter(e.target.value)}
-                        className="border-slate-300 rounded-md shadow-sm p-2 text-sm dark:bg-slate-800 dark:border-slate-700"
+                        className="border-slate-200 rounded-xl shadow-sm p-2.5 text-sm font-medium bg-slate-50 dark:bg-slate-800 dark:border-slate-700 outline-none"
                     >
                         <option value="ALL">Todas las Canchas</option>
                         {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -147,144 +143,175 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
                 </div>
             </div>
 
-            {/* Grilla Principal */}
-            <div className="bg-white dark:bg-slate-900 border rounded-xl shadow-sm overflow-hidden flex">
-                {/* Columna de Horas */}
-                <div className="w-16 flex-shrink-0 border-r bg-slate-50 dark:bg-slate-800/50">
-                    <div className="h-12 border-b"></div> {/* Espacio del header */}
-                    <div className="relative" style={{ height: `${(END_HOUR - START_HOUR + 1) * 60 * MINUTE_HEIGHT}px` }}>
-                        {hours.map(hour => (
-                            <div key={hour} className="absolute w-full text-right pr-2 text-xs text-slate-500 font-medium" style={{ top: `${(hour - START_HOUR) * 60 * MINUTE_HEIGHT - 8}px` }}>
-                                {hour}:00
-                            </div>
-                        ))}
-                    </div>
-                </div>
+            {/* Grilla Matricial Profesional */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse min-w-[800px]">
+                        <thead>
+                            <tr>
+                                <th className="w-24 border-b border-r bg-slate-50 dark:bg-slate-800/50 p-4 text-slate-500 font-semibold text-sm">
+                                    Horario
+                                </th>
+                                {visibleCourts.map(court => (
+                                    <th key={court.id} className="border-b bg-slate-50 dark:bg-slate-800/50 p-4 text-slate-800 dark:text-slate-100 font-bold text-center">
+                                        {court.name}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {timeSlots.map((time, index) => {
+                                const isHour = time.endsWith(':00');
+                                const dateStr = new Date(currentDate.getTime() - currentDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                                const slotDateTime = new Date(`${dateStr}T${time}:00`);
 
-                {/* Columnas de Canchas */}
-                <div className="flex-1 flex overflow-x-auto">
-                    {visibleCourts.map((court) => {
-                        const courtBookings = bookings.filter(b => b.courtId === court.id);
+                                return (
+                                    <tr key={time} className={isHour ? 'border-t border-slate-100 dark:border-slate-800/50' : ''}>
+                                        <td className="border-r border-slate-100 dark:border-slate-800/50 p-2 text-center text-xs font-medium text-slate-400 bg-slate-50/30 dark:bg-slate-900">
+                                            {isHour ? time : ''}
+                                        </td>
 
-                        return (
-                            <div key={court.id} className="flex-1 min-w-[200px] border-r last:border-r-0 relative">
-                                {/* Header Cancha */}
-                                <div className="h-12 border-b bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center font-bold text-sm sticky top-0 z-20">
-                                    {court.name}
-                                </div>
+                                        {visibleCourts.map(court => {
+                                            // Verificar si hay un turno que EMPIEZA en este bloque
+                                            const startingBooking = bookings.find(b => b.courtId === court.id && new Date(b.startTime).getTime() === slotDateTime.getTime());
 
-                                {/* Contenedor de la Grilla Absolute */}
-                                <div className="relative w-full" style={{ height: `${(END_HOUR - START_HOUR + 1) * 60 * MINUTE_HEIGHT}px` }}>
+                                            if (startingBooking) {
+                                                const durationMins = (new Date(startingBooking.endTime).getTime() - new Date(startingBooking.startTime).getTime()) / 60000;
+                                                const rowSpan = Math.max(1, Math.ceil(durationMins / 30));
 
-                                    {/* Líneas divisorias y celdas clickeables de fondo (cada 30 min) */}
-                                    {hours.map(hour => (
-                                        <div key={hour}>
-                                            <div
-                                                className="absolute w-full border-t border-slate-100 dark:border-slate-800/50 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors z-0"
-                                                style={{ top: `${(hour - START_HOUR) * 60 * MINUTE_HEIGHT}px`, height: `${30 * MINUTE_HEIGHT}px` }}
-                                                onClick={() => handleEmptyClick(court.id, hour, 0)}
-                                            />
-                                            <div
-                                                className="absolute w-full border-t border-slate-50 dark:border-slate-800/30 border-dashed cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors z-0"
-                                                style={{ top: `${((hour - START_HOUR) * 60 + 30) * MINUTE_HEIGHT}px`, height: `${30 * MINUTE_HEIGHT}px` }}
-                                                onClick={() => handleEmptyClick(court.id, hour, 30)}
-                                            />
-                                        </div>
-                                    ))}
+                                                return (
+                                                    <td key={court.id} rowSpan={rowSpan} className="border border-slate-100 dark:border-slate-800 p-1.5 align-top">
+                                                        <div
+                                                            onClick={() => { setSelectedBooking(startingBooking); setModalMode('VIEW'); setModalOpen(true); }}
+                                                            className={`h-full w-full rounded-xl p-3 border cursor-pointer transition-all ${getBackgroundColor(startingBooking.status)}`}
+                                                        >
+                                                            <div className="flex items-center font-bold text-sm mb-1">
+                                                                {getIcon(startingBooking.status)}
+                                                                {new Date(startingBooking.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} - {new Date(startingBooking.endTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                                            </div>
+                                                            <div className="text-sm font-medium opacity-90 ml-6">
+                                                                {startingBooking.user?.name || startingBooking.description || 'Turno Registrado'}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                );
+                                            }
 
-                                    {/* Renderizado de Bloques de Reservas (Z-Index alto para tapar el fondo) */}
-                                    {courtBookings.map(booking => {
-                                        const start = new Date(booking.startTime);
-                                        const end = new Date(booking.endTime);
-                                        const styles = getBookingStyle(start, end);
+                                            // Verificar si este bloque está OCUPADO por un turno anterior (para no dibujar la celda)
+                                            const isOverlapped = bookings.some(b => {
+                                                if (b.courtId !== court.id) return false;
+                                                const start = new Date(b.startTime).getTime();
+                                                const end = new Date(b.endTime).getTime();
+                                                const current = slotDateTime.getTime();
+                                                return current > start && current < end;
+                                            });
 
-                                        return (
-                                            <div
-                                                key={booking.id}
-                                                className={`absolute left-1 right-1 rounded-md border p-1 shadow-sm overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 flex flex-col justify-start text-xs ${getBackgroundColor(booking.status)}`}
-                                                style={styles}
-                                                onClick={() => handleBookingClick(booking)}
-                                            >
-                                                <div className="font-bold">
-                                                    {start.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} - {end.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                                                </div>
-                                                <div className="truncate opacity-90 mt-0.5">
-                                                    {booking.user?.name || booking.description || 'Cliente Local'}
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
+                                            if (isOverlapped) return null; // La celda anterior con rowSpan ya ocupa este espacio
+
+                                            // Renderizar bloque LIBRE interactivo
+                                            return (
+                                                <td
+                                                    key={court.id}
+                                                    className="border border-slate-50 dark:border-slate-800/30 p-1 group cursor-pointer"
+                                                    onClick={() => handleEmptyClick(court.id, time)}
+                                                >
+                                                    <div className="h-[30px] w-full rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 transition-all text-blue-600 font-medium text-xs">
+                                                        <Plus className="w-3 h-3 mr-1" /> Reservar {time}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            {/* MODAL MULTIUSO (CREAR / VER) */}
+            {/* MODAL DE RESERVA / VISUALIZACIÓN */}
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[450px] rounded-2xl">
                     {modalMode === 'CREATE' ? (
                         <>
-                            <DialogHeader><DialogTitle>Agendar Turno Manual</DialogTitle></DialogHeader>
-                            <div className="space-y-4 mt-4">
+                            <DialogHeader><DialogTitle className="text-xl font-bold">Agendar Turno</DialogTitle></DialogHeader>
+
+                            {/* ALERTA DE ERROR DE BASE DE DATOS */}
+                            {dbError && (
+                                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-r-md text-sm font-mono overflow-x-auto">
+                                    <strong>Error de Base de Datos:</strong><br />{dbError}
+                                </div>
+                            )}
+
+                            <div className="space-y-5 mt-2">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label>Hora Inicio</Label>
-                                        <Input type="time" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
+                                    <div className="space-y-1.5">
+                                        <Label className="text-slate-600">Hora Inicio</Label>
+                                        <Input type="time" className="rounded-xl" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
                                     </div>
-                                    <div>
-                                        <Label>Hora Fin</Label>
-                                        <Input type="time" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} />
+                                    <div className="space-y-1.5">
+                                        <Label className="text-slate-600">Hora Fin</Label>
+                                        <Input type="time" className="rounded-xl" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} />
                                     </div>
                                 </div>
 
-                                <div>
-                                    <Label>Tipo de Acción</Label>
+                                <div className="space-y-1.5">
+                                    <Label className="text-slate-600">Tipo de Acción</Label>
                                     <select
-                                        className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm dark:border-slate-700"
+                                        className="flex h-10 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
                                         value={formData.type}
                                         onChange={(e: any) => setFormData({ ...formData, type: e.target.value })}
                                     >
-                                        <option value="RESERVA">Reserva Local</option>
-                                        <option value="BLOQUEO">Bloqueo de Cancha</option>
-                                        <option value="FIJO">Abono Fijo</option>
+                                        <option value="RESERVA">🎾 Reserva de Cliente (Local)</option>
+                                        <option value="FIJO">📅 Abono Fijo (Recurrente)</option>
+                                        <option value="BLOQUEO">🔒 Bloqueo (Mantenimiento / Lluvia)</option>
                                     </select>
                                 </div>
 
-                                <div>
-                                    <Label>Nombre / Motivo</Label>
+                                <div className="space-y-1.5">
+                                    <Label className="text-slate-600">{formData.type === 'BLOQUEO' ? 'Motivo del bloqueo' : 'Nombre del Cliente'}</Label>
                                     <Input
-                                        placeholder={formData.type === 'RESERVA' ? 'Ej: Juan Perez' : 'Ej: Mantenimiento'}
+                                        className="rounded-xl"
+                                        placeholder={formData.type === 'BLOQUEO' ? 'Ej: Lluvia / Reparación' : 'Ej: Juan Pérez'}
                                         value={formData.clientName}
                                         onChange={e => setFormData({ ...formData, clientName: e.target.value })}
                                     />
                                 </div>
 
-                                <div className="flex justify-end space-x-2 pt-4">
-                                    <Button variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-                                    <Button onClick={submitCreate} className="bg-blue-600 text-white">Guardar</Button>
+                                <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+                                    <Button variant="ghost" className="rounded-xl" onClick={() => setModalOpen(false)}>Cancelar</Button>
+                                    <Button onClick={submitCreate} className="rounded-xl bg-slate-900 text-white hover:bg-slate-800">Guardar Turno</Button>
                                 </div>
                             </div>
                         </>
                     ) : selectedBooking && (
                         <>
-                            <DialogHeader><DialogTitle>Detalles del Turno</DialogTitle></DialogHeader>
-                            <div className="space-y-3 mt-4">
-                                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-1">
-                                    <p className="text-sm font-medium">Cancha: <span className="font-normal">{selectedBooking.court.name}</span></p>
-                                    <p className="text-sm font-medium">Horario: <span className="font-normal">
-                                        {new Date(selectedBooking.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} a {new Date(selectedBooking.endTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                                    </span></p>
-                                    <p className="text-sm font-medium">Titular: <span className="font-normal">
-                                        {selectedBooking.user?.name || selectedBooking.description || 'N/A'}
-                                    </span></p>
-                                    <p className="text-sm font-medium">Estado: <span className="font-normal">{selectedBooking.status}</span></p>
+                            <DialogHeader><DialogTitle className="text-xl font-bold">Detalle del Turno</DialogTitle></DialogHeader>
+                            <div className="space-y-4 mt-2">
+                                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border rounded-xl space-y-3">
+                                    <div className="flex justify-between items-center border-b pb-2">
+                                        <span className="text-sm font-medium text-slate-500">Cancha</span>
+                                        <span className="font-bold">{selectedBooking.court.name}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center border-b pb-2">
+                                        <span className="text-sm font-medium text-slate-500">Horario</span>
+                                        <span className="font-bold text-blue-600">
+                                            {new Date(selectedBooking.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} a {new Date(selectedBooking.endTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center border-b pb-2">
+                                        <span className="text-sm font-medium text-slate-500">Titular</span>
+                                        <span className="font-bold">{selectedBooking.user?.name || selectedBooking.description || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-slate-500">Estado</span>
+                                        <span className="font-bold uppercase text-xs px-2 py-1 bg-slate-200 rounded-md">{selectedBooking.status}</span>
+                                    </div>
                                 </div>
 
-                                <div className="flex justify-end space-x-2 pt-4">
-                                    <Button variant="outline" onClick={() => setModalOpen(false)}>Cerrar</Button>
-                                    <Button variant="destructive" onClick={handleCancelBooking}>Cancelar / Borrar Turno</Button>
+                                <div className="flex justify-between pt-4">
+                                    <Button variant="destructive" className="rounded-xl bg-red-500 hover:bg-red-600" onClick={handleCancelBooking}>Borrar / Cancelar</Button>
+                                    <Button variant="outline" className="rounded-xl" onClick={() => setModalOpen(false)}>Cerrar</Button>
                                 </div>
                             </div>
                         </>
