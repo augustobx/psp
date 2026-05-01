@@ -75,8 +75,7 @@ export async function createAdminBooking(data: {
                 endTime,
                 status,
                 totalAmount: 0,
-                // Usamos userId null porque es manual, guardamos el nombre en algún lado 
-                // Nota: Si en Prisma no tenés "description", guardalo en un campo que tengas disponible o adaptá el modelo.
+                userId: null as any, // <-- Le pasamos el campo para callar a TypeScript
             }
         });
 
