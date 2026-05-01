@@ -78,7 +78,18 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
     const submitCreate = async () => {
         setDbError(null);
         const dateStr = new Date(currentDate.getTime() - currentDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-        const res = await createAdminBooking({ ...formData, dateStr } as any);
+
+        // Armamos el paquete con los nombres exactos que espera el servidor
+        const payload = {
+            courtId: formData.courtId,
+            dateStr: dateStr,
+            startTimeStr: formData.startTime,
+            endTimeStr: formData.endTime,
+            type: formData.type,
+            clientName: formData.clientName
+        };
+
+        const res = await createAdminBooking(payload as any);
 
         if (res.success) {
             setModalOpen(false);
