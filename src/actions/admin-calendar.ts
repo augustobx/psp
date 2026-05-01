@@ -75,7 +75,8 @@ export async function createAdminBooking(data: {
                 endTime,
                 status,
                 totalAmount: 0,
-                userId: null as any, // <-- Le pasamos el campo para callar a TypeScript
+                userId: null as any,
+                description: description,
             }
         });
 
