@@ -10,6 +10,9 @@ interface SlotData {
 }
 
 export default function BookingFlow({ courts }: { courts: any[] }) {
+  // ESTADO DEL SPLASH SCREEN
+  const [showSplash, setShowSplash] = useState(true);
+
   const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedCourt, setSelectedCourt] = useState<string>('');
@@ -24,6 +27,14 @@ export default function BookingFlow({ courts }: { courts: any[] }) {
     d.setDate(d.getDate() + i);
     return d;
   });
+
+  // EFECTO DEL SPLASH (Dura 1.5 segundos y desaparece suavemente)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (selectedCourt && selectedDate) {
@@ -55,27 +66,38 @@ export default function BookingFlow({ courts }: { courts: any[] }) {
     }, 1500);
   };
 
+  // --- PANTALLA SPLASH DE INICIO (Nivel App Nativa) ---
+  if (showSplash) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center animate-in fade-in duration-300">
+        <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center font-black text-slate-900 text-3xl mb-6 shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-bounce">
+          PSP
+        </div>
+        <h1 className="text-3xl font-black tracking-tight text-white mb-1">
+          Sistema PSP
+        </h1>
+        <p className="text-emerald-400 font-bold tracking-widest text-sm uppercase">Padel Club</p>
+      </div>
+    );
+  }
+
+  // --- RENDER DE LA PWA ---
   return (
     <div className="w-full h-full md:h-auto min-h-screen md:min-h-0 bg-white dark:bg-slate-900 md:rounded-[2rem] md:shadow-2xl md:border md:border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col relative">
 
-      {/* SPLASH HEADER CON LOGO */}
-      <div className="bg-slate-900 dark:bg-black p-6 pb-8 text-white relative z-10 rounded-b-[2rem] shadow-lg">
-        {/* Pseudo-Logo */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center font-black text-slate-900 text-xs">
-              PSP
-            </div>
-            <span className="font-bold tracking-tight text-lg opacity-90">Padel Club</span>
-          </div>
-        </div>
-
-        <h2 className="text-3xl font-black tracking-tight mt-2 flex items-center">
-          Reservá tu <br /> Cancha 🎾
+      {/* HEADER HERO RENOVADO (Limpio y centrado) */}
+      <div className="bg-slate-900 dark:bg-black px-6 py-10 text-center relative z-10 rounded-b-[2.5rem] shadow-md">
+        <h2 className="text-3xl font-black tracking-tight text-white mb-2">
+          Reservá tu Cancha 🎾
         </h2>
+        <p className="text-slate-400 text-sm font-medium">
+          Elegí día, horario y preparate para jugar.
+        </p>
       </div>
 
-      <div className="p-5 flex-1 overflow-y-auto pb-28 space-y-8 -mt-4">
+      <div className="p-5 flex-1 overflow-y-auto pb-28 space-y-8 -mt-2">
+        {/* ACÁ ABAJO SIGUE EL RESTO DE TU CÓDIGO (El Paso 1 con los botones verdes, etc.) */}
+
 
         {/* PASO 1 */}
         {step === 1 && (
@@ -94,8 +116,8 @@ export default function BookingFlow({ courts }: { courts: any[] }) {
                       key={i}
                       onClick={() => setSelectedDate(date)}
                       className={`flex-shrink-0 w-16 p-3 rounded-2xl flex flex-col items-center justify-center transition-all snap-start shadow-sm border ${isSelected
-                          ? 'bg-emerald-500 text-white border-emerald-500 ring-4 ring-emerald-500/20'
-                          : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                        ? 'bg-emerald-500 text-white border-emerald-500 ring-4 ring-emerald-500/20'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
                         }`}
                     >
                       <span className="text-[10px] uppercase font-bold opacity-80 mb-1">
@@ -121,8 +143,8 @@ export default function BookingFlow({ courts }: { courts: any[] }) {
                     key={court.id}
                     onClick={() => setSelectedCourt(court.id)}
                     className={`p-4 rounded-2xl text-left transition-all border shadow-sm flex flex-col ${selectedCourt === court.id
-                        ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100'
-                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300'
+                      ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300'
                       }`}
                   >
                     <span className="font-bold text-base">{court.name}</span>
