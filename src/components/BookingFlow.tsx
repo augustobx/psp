@@ -84,121 +84,127 @@ export default function BookingFlow({ courts }: BookingFlowProps) {
       } else {
         setAvailableSlots([]);
       }
-
-      setLoading(false);
-    };
-
-    const formatTime = (isoString: string) => {
-      return new Date(isoString).toLocaleTimeString('es-AR', {
-        hour: '2-digit',
-        minute: '2-digit',
+    } else {
+      setMessage({
+        text: typeof result.error === 'string' ? result.error : 'Error al procesar la reserva.',
+        type: 'error'
       });
-    };
+    }
 
-    return (
-      <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mt-6">
-        <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">Reservar Turno</h2>
+    setLoading(false);
+  };
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Selección de Cancha */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Seleccioná una Cancha
-            </label>
-            <select
-              value={selectedCourt}
-              onChange={(e) => setSelectedCourt(e.target.value)}
-              className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
-            >
-              <option value="">-- Elegir Cancha --</option>
-              {courts.map((court) => (
-                // Usamos court.sport como corresponde a tu esquema de Prisma
-                <option key={court.id} value={court.id}>
-                  {court.name} ({court.sport})
-                </option>
-              ))}
-            </select>
-          </div>
+  const formatTime = (isoString: string) => {
+    return new Date(isoString).toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
-          {/* Selección de Fecha */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Fecha
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              min={new Date().toISOString().split('T')[0]}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
-            />
-          </div>
+  return (
+    <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mt-6">
+      <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-slate-100">Reservar Turno</h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Selección de Cancha */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+            Seleccioná una Cancha
+          </label>
+          <select
+            value={selectedCourt}
+            onChange={(e) => setSelectedCourt(e.target.value)}
+            className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+          >
+            <option value="">-- Elegir Cancha --</option>
+            {courts.map((court) => (
+              // Usamos court.sport como corresponde a tu esquema de Prisma
+              <option key={court.id} value={court.id}>
+                {court.name} ({court.sport})
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Grilla de Horarios */}
-        {selectedCourt && selectedDate && (
-          <div className="mb-8">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-4">
-              Horarios Disponibles
-            </label>
-
-            {loading && availableSlots.length === 0 ? (
-              <p className="text-slate-500">Buscando turnos...</p>
-            ) : availableSlots.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                {availableSlots.map((slot, index) => {
-                  const isSelected = selectedSlot?.start === slot.start;
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedSlot(slot)}
-                      className={`p-3 rounded-lg text-sm font-medium transition-all ${isSelected
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-600'
-                        }`}
-                    >
-                      {formatTime(slot.start)}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-red-500 font-medium">No hay turnos disponibles para esta fecha.</p>
-            )}
-          </div>
-        )}
-
-        {/* Input de Usuario (Temporal hasta conectar Auth) */}
-        <div className="mb-6">
+        {/* Selección de Fecha */}
+        <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-            Tu ID de Usuario (Requerido por BD)
+            Fecha
           </label>
           <input
-            type="text"
-            placeholder="Ej: d3b07384-d9a..."
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            className="w-full md:w-1/2 p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+            type="date"
+            value={selectedDate}
+            min={new Date().toISOString().split('T')[0]}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="w-full p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
           />
         </div>
-
-        {/* Mensajes de feedback */}
-        {message && (
-          <div className={`p-4 mb-6 rounded-lg font-medium ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-            {message.text}
-          </div>
-        )}
-
-        {/* Botón de Confirmación */}
-        <div className="border-t border-slate-200 dark:border-slate-700 pt-6 mt-6">
-          <button
-            onClick={handleBooking}
-            disabled={!selectedSlot || !selectedCourt || loading || !userId}
-            className="w-full md:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-semibold rounded-lg transition-colors flex items-center justify-center"
-          >
-            {loading ? 'Procesando...' : 'Confirmar y Pagar'}
-          </button>
-        </div>
       </div>
-    );
-  }
+
+      {/* Grilla de Horarios */}
+      {selectedCourt && selectedDate && (
+        <div className="mb-8">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-4">
+            Horarios Disponibles
+          </label>
+
+          {loading && availableSlots.length === 0 ? (
+            <p className="text-slate-500">Buscando turnos...</p>
+          ) : availableSlots.length > 0 ? (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              {availableSlots.map((slot, index) => {
+                const isSelected = selectedSlot?.start === slot.start;
+                return (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`p-3 rounded-lg text-sm font-medium transition-all ${isSelected
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-600'
+                      }`}
+                  >
+                    {formatTime(slot.start)}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-red-500 font-medium">No hay turnos disponibles para esta fecha.</p>
+          )}
+        </div>
+      )}
+
+      {/* Input de Usuario (Temporal hasta conectar Auth) */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+          Tu ID de Usuario (Requerido por BD)
+        </label>
+        <input
+          type="text"
+          placeholder="Ej: d3b07384-d9a..."
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          className="w-full md:w-1/2 p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+        />
+      </div>
+
+      {/* Mensajes de feedback */}
+      {message && (
+        <div className={`p-4 mb-6 rounded-lg font-medium ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+          {message.text}
+        </div>
+      )}
+
+      {/* Botón de Confirmación */}
+      <div className="border-t border-slate-200 dark:border-slate-700 pt-6 mt-6">
+        <button
+          onClick={handleBooking}
+          disabled={!selectedSlot || !selectedCourt || loading || !userId}
+          className="w-full md:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-semibold rounded-lg transition-colors flex items-center justify-center"
+        >
+          {loading ? 'Procesando...' : 'Confirmar y Pagar'}
+        </button>
+      </div>
+    </div>
+  );
+}
