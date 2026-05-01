@@ -5,30 +5,31 @@ import { revalidatePath } from 'next/cache';
 
 export async function getSettings() {
     try {
-        const settings = await prisma.setting.findMany();
-        // Convertimos el array en un objeto clave-valor para que sea fácil de usar
-        return settings.reduce((acc: any, curr) => {
-            acc[curr.key] = curr.value;
-            return acc;
-        }, {});
+        // Buscamos la configuración (siempre será el ID 1)
+        let settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+
+        // Si no existe, la creamos con los valores por defecto
+        if (!settings) {
+            settings = await prisma.systemSetting.create({ data: { id: 1 } });
+        }
+
+        return { success: true, data: settings };
     } catch (error) {
-        return {};
+        return { success: false, error: 'Error al cargar configuraciones' };
     }
 }
 
-export async function updateSettings(data: Record<string, string>) {
+export async function updateSettings(data: any) {
     try {
-        const operations = Object.entries(data).map(([key, value]) =>
-            prisma.setting.upsert({
-                where: { key },
-                update: { value },
-                create: { key, value },
-            })
-        );
-        await prisma.$transaction(operations);
+        await prisma.systemSetting.upsert({
+            where: { id: 1 },
+            update: data,
+            create: { id: 1, ...data },
+        });
+        revalidatePath('/'); // Recarga la PWA
         revalidatePath('/admin/settings');
         return { success: true };
     } catch (error) {
-        return { success: false, error: 'Error al actualizar configuraciones' };
+        return { success: false, error: 'Error al guardar configuraciones' };
     }
 }

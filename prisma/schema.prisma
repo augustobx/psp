@@ -218,3 +218,32 @@ model TournamentMatch {
   status          MatchStatus        @default(SCHEDULED)
   @@index([categoryId, round, matchOrder])
 }
+
+
+model SystemSetting {
+  id               Int      @id @default(1)
+  
+  // --- DATOS DEL CLUB Y PAGOS (Los tuyos) ---
+  clubName         String   @default("Padel Club")
+  contactPhone     String   @default("")
+  mpAccessToken    String   @default("")
+  reservationFee   Float    @default(0)
+  
+  // --- CONFIGURACIÓN DE LA APP / PWA (Nuevos) ---
+  // Splash
+  splashLogo       String   @default("PSP")
+  splashDuration   Int      @default(1500)
+  
+  // Globo (Bubble)
+  bubbleActive     Boolean  @default(false)
+  bubbleText       String   @default("¡Bienvenidos al club! 🎾")
+  bubbleDuration   Int      @default(3000)
+  bubbleColor      String   @default("#10b981")
+  
+  // Apariencia y Negocio
+  theme            String   @default("light")
+  requireDeposit   Boolean  @default(true)
+  autoWhatsapp     Boolean  @default(false)
+  
+  updatedAt        DateTime @updatedAt
+}
