@@ -6,9 +6,9 @@ export default async function Home() {
     const courts = response.success && response.data ? response.data : [];
 
     return (
-        // Fondo neutro, centrado en escritorio, pantalla completa en celu
-        <main className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col">
-            <div className="flex-1 w-full max-w-md mx-auto md:py-8 h-full">
+        // Pantalla completa, sin márgenes extras, color de fondo neutro
+        <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center">
+            <div className="w-full max-w-md h-full min-h-screen sm:min-h-0 sm:mt-8">
                 <BookingFlow courts={courts} />
             </div>
         </main>
