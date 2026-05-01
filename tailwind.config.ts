@@ -2,7 +2,7 @@ import type { Config } from "tailwindcss";
 
 const config = {
     // ACÁ ESTÁ LA MAGIA: Le decimos que el modo oscuro se activa manualmente con la clase 'dark'
-    darkMode: ["class"],
+    darkMode: "class",
 
     content: [
         './pages/**/*.{ts,tsx}',
