@@ -35,9 +35,8 @@ export async function createPaymentPreference(bookingId: string) {
           }
         ],
         payer: {
-          email: booking.user.email,
-          // Forzamos un string fallback para eliminar el error de 'null' vs 'undefined'
-          name: booking.user.name || 'Cliente',
+          email: booking.user?.email || 'cliente@local.com',
+          name: booking.user?.name || booking.description || 'Cliente',
         },
         back_urls: {
           success: `${process.env.NEXT_PUBLIC_APP_URL}/reservas/success`,
