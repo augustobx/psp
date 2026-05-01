@@ -57,7 +57,7 @@ export async function createAdminBooking(data: {
         }
 
         // El estado y descripción dependen de lo que estemos creando
-        let status = 'CONFIRMED';
+        let status: any = 'CONFIRMED';
         let description = data.clientName || 'Reserva Manual';
 
         if (data.type === 'BLOQUEO') {
