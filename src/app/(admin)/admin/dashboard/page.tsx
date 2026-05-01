@@ -86,7 +86,7 @@ export default async function AdminDashboard() {
                     {booking.endTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                   </TableCell>
                   <TableCell>{booking.court.name}</TableCell>
-                  <TableCell>{booking.user.name || booking.user.email}</TableCell>
+                  <TableCell>{booking.user?.name || booking.user?.email || booking.description || 'Cliente Local'}</TableCell>
                   <TableCell>
                     <Badge variant={booking.status === 'CONFIRMED' ? 'default' : 'secondary'}>
                       {booking.status}
