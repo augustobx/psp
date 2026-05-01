@@ -15,9 +15,11 @@ enum Role {
 }
 
 enum BookingStatus {
-  PENDING   // Esperando pago (MercadoPago)
-  CONFIRMED // Pagado o asignado manualmente
+  PENDING
+  CONFIRMED
   CANCELLED
+  BLOCKED  
+  FIXED     
 }
 
 enum TournamentStatus {
@@ -88,14 +90,14 @@ model Booking {
   id              String        @id @default(uuid())
   courtId         String
   court           Court         @relation(fields: [courtId], references: [id])
-  userId          String
-  user            User          @relation(fields: [userId], references: [id])
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
   startTime       DateTime
   endTime         DateTime
   status          BookingStatus @default(PENDING)
   paymentId       String?       // ID MercadoPago
   totalAmount     Decimal       @db.Decimal(10, 2)
-  
+  description     String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
