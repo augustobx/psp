@@ -1,92 +1,33 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { bookingSchema } from '@/lib/schemas';
-import { revalidatePath } from 'next/cache';
 
-export async function createBooking(data: unknown) {
-  const result = bookingSchema.safeParse(data);
-
-  if (!result.success) {
-    return { success: false, error: result.error.flatten() };
-  }
-
-  // Ahora el desestructurado funciona porque el esquema tiene userId y totalPrice
-  const { courtId, startTime, endTime, userId, totalPrice } = result.data;
-
+export async function getBookingsByDate(dateStr: string) {
   try {
-    // 1. Verificar superposición
-    const overlapping = await prisma.booking.findFirst({
+    // Parseamos el string (YYYY-MM-DD) y definimos los límites del día
+    const startOfDay = new Date(`${dateStr}T00:00:00`);
+    const endOfDay = new Date(`${dateStr}T23:59:59`);
+
+    const bookings = await prisma.booking.findMany({
       where: {
-        courtId,
-        status: { in: ['PENDING', 'CONFIRMED'] },
-        OR: [
-          { startTime: { lt: endTime, gte: startTime } },
-          { endTime: { gt: startTime, lte: endTime } },
-          { startTime: { lte: startTime }, endTime: { gte: endTime } }
-        ]
-      }
+        startTime: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      include: {
+        court: true,
+        user: true,
+      },
+      orderBy: [
+        { courtId: 'asc' },
+        { startTime: 'asc' }
+      ]
     });
 
-    if (overlapping) {
-      return { success: false, error: 'La cancha ya está reservada en ese horario.' };
-    }
-
-    // 2. Crear Reserva
-    const booking = await prisma.booking.create({
-      data: {
-        userId,
-        courtId,
-        startTime,
-        endTime,
-        totalAmount: totalPrice, // <-- Asignamos el valor al campo correcto de la DB
-        status: 'PENDING'
-      }
-    });
-
-    revalidatePath('/reservas');
-    revalidatePath('/admin/calendar');
-
-    return { success: true, booking };
+    return { success: true, data: bookings };
   } catch (error) {
-    console.error('Error creando reserva:', error);
-    return { success: false, error: 'Error interno del servidor.' };
+    console.error('Error fetching bookings:', error);
+    return { success: false, error: 'Error al cargar las reservas del día.' };
   }
-}
-
-export async function getAvailableSlots(courtId: string, date: string) {
-  const targetDate = new Date(date);
-  targetDate.setHours(0, 0, 0, 0);
-
-  const nextDay = new Date(targetDate);
-  nextDay.setDate(nextDay.getDate() + 1);
-
-  const bookings = await prisma.booking.findMany({
-    where: {
-      courtId,
-      status: { in: ['PENDING', 'CONFIRMED'] },
-      startTime: { gte: targetDate, lt: nextDay }
-    }
-  });
-
-  const slots = [];
-  for (let i = 8; i <= 22; i++) {
-    const slotStart = new Date(targetDate);
-    slotStart.setHours(i, 0, 0, 0);
-    const slotEnd = new Date(targetDate);
-    slotEnd.setHours(i + 1, 0, 0, 0);
-
-    const isBooked = bookings.some(b =>
-      (b.startTime < slotEnd && b.endTime > slotStart)
-    );
-
-    if (!isBooked) {
-      slots.push({
-        start: slotStart.toISOString(),
-        end: slotEnd.toISOString()
-      });
-    }
-  }
-
-  return slots;
 }
