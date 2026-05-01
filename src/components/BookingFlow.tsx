@@ -32,13 +32,23 @@ export default function BookingFlow({ courts }: BookingFlowProps) {
     if (selectedCourt && selectedDate) {
       setLoading(true);
       getAvailableSlots(selectedCourt, selectedDate)
-        .then((slots) => {
-          setAvailableSlots(slots);
+        .then((response) => {
+          // Verificamos que la acción haya sido exitosa y extraemos el array 'data'
+          if (response.success && response.data) {
+            // Usamos 'as any' por si tenías definido el type Slot de otra forma en este archivo, 
+            // pero le pasamos el array de horarios pelado.
+            setAvailableSlots(response.data as any);
+          } else {
+            setAvailableSlots([]);
+          }
           setSelectedSlot(null);
           setMessage(null);
         })
-        .catch(() => setMessage({ text: 'Error al cargar horarios.', type: 'error' }))
-        .finally(() => setLoading(false));
+        .catch((err) => {
+          console.error(err);
+          setAvailableSlots([]);
+          setSelectedSlot(null);
+        });
     }
   }, [selectedCourt, selectedDate]);
 
@@ -144,8 +154,8 @@ export default function BookingFlow({ courts }: BookingFlowProps) {
                     key={index}
                     onClick={() => setSelectedSlot(slot)}
                     className={`p-3 rounded-lg text-sm font-medium transition-all ${isSelected
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-600'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-600'
                       }`}
                   >
                     {formatTime(slot.start)}
