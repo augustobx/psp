@@ -1,25 +1,34 @@
 import { getPublicCourts } from "@/actions/public-bookings";
+import { getSettings } from "@/actions/settings";
 import BookingFlow from "@/components/BookingFlow";
-import PublicNavbar from "@/components/PublicNavbar"; // <-- Acá lo traemos de vuelta
+import PublicNavbar from "@/components/PublicNavbar";
 
 export default async function Home() {
-    const response = await getPublicCourts();
-    const courts = response.success && response.data ? response.data : [];
+    const [courtsRes, settingsRes] = await Promise.all([getPublicCourts(), getSettings()]);
+
+    const courts = courtsRes.success && courtsRes.data ? courtsRes.data : [];
+    const settings = settingsRes.success && settingsRes.data ? settingsRes.data : null;
+
+    // Acá tomamos la decisión: si el admin eligió dark, disparamos la clase 'dark' de Tailwind
+    const theme = settings?.theme || 'light';
+    const isDark = theme === 'dark';
 
     return (
-        // Pantalla completa, fondo neutro
-        <main className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center">
+        // ESTE ES EL CONTENEDOR MAESTRO. La clase 'dark' activa todos los colores oscuros de adentro.
+        <div className={isDark ? 'dark' : ''}>
 
-            {/* El Navbar a pantalla completa pero con el contenido centrado */}
-            <div className="w-full z-50">
-                <PublicNavbar />
-            </div>
+            {/* Fondo base que reacciona al modo oscuro con alto contraste */}
+            <main className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50 transition-colors duration-500 flex flex-col items-center">
 
-            {/* El contenedor de la App PWA */}
-            <div className="w-full max-w-md h-full flex-1 sm:py-6">
-                <BookingFlow courts={courts} />
-            </div>
+                <div className="w-full z-50">
+                    <PublicNavbar />
+                </div>
 
-        </main>
+                <div className="w-full max-w-md h-full flex-1 sm:py-6">
+                    <BookingFlow courts={courts} sysSettings={settings} />
+                </div>
+
+            </main>
+        </div>
     );
 }
