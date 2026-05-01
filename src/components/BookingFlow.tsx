@@ -9,7 +9,8 @@ interface SlotData {
   status: string;
 }
 
-export default function BookingFlow({ courts }: { courts: any[] }) {
+export default function BookingFlow({ courts, sysSettings }: { courts: any[], sysSettings?: any }) {
+  const isDark = sysSettings?.theme === 'dark';
   // ESTADO DEL SPLASH SCREEN
   const [showSplash, setShowSplash] = useState(true);
 
