@@ -50,3 +50,41 @@ export async function sendInteractiveButtons(to: string, text: string, buttons: 
         body: JSON.stringify(payload),
     });
 }
+
+// Enviar una lista interactiva (Mensaje de lista, hasta 10 opciones por sección)
+export async function sendInteractiveList(
+    to: string,
+    bodyText: string,
+    buttonTitle: string, // El texto del botón principal que abre la lista
+    sectionsRows: { id: string, title: string, description: string }[]
+) {
+    const payload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: to,
+        type: 'interactive',
+        interactive: {
+            type: 'list',
+            header: { type: 'text', text: 'Reservas Disponibles' },
+            body: { text: bodyText },
+            footer: { text: 'Selecciona una opción para continuar' },
+            action: {
+                button: buttonTitle,
+                sections: [{
+                    title: 'Horarios Hoy',
+                    rows: sectionsRows.map(row => ({
+                        id: row.id,
+                        title: row.title,
+                        description: row.description
+                    }))
+                }]
+            }
+        }
+    };
+
+    await fetch(WHATSAPP_API_URL, {
+        method: 'POST',
+        headers: HEADERS,
+        body: JSON.stringify(payload),
+    });
+}
