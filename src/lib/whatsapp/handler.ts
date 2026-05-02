@@ -1,5 +1,5 @@
 // src/lib/whatsapp/handler.ts
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { sendWhatsAppMessage, sendInteractiveButtons } from './api';
 
 export async function handleIncomingMessage(phone: string, message: any) {
