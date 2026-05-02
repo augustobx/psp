@@ -1,12 +1,26 @@
 // src/lib/whatsapp/handler.ts
 import { prisma } from '@/lib/prisma';
 import { sendWhatsAppMessage, sendInteractiveButtons, sendInteractiveList } from './api';
-import { format } from 'date-format-parse'; // Necesitás una librería para formatear fechas, ej: date-format-parse
 
 export async function handleIncomingMessage(phone: string, message: any) {
     const messageType = message.type;
 
-    // ... (Mantener la lógica inicial del "Hola") ...
+    // 1. Si el usuario manda un texto normal (ej: "Hola", "Quiero un turno")
+    if (messageType === 'text') {
+        const text = message.text.body.toLowerCase();
+
+        if (text.includes('hola') || text.includes('turno')) {
+            await sendInteractiveButtons(
+                phone,
+                "¡Hola! 👋 Bienvenido al sistema de reservas del club. ¿Qué querés hacer hoy?",
+                [
+                    { id: 'btn_ver_turnos', title: 'Ver Turnos Hoy' },
+                    { id: 'btn_mis_reservas', title: 'Mis Reservas' }
+                ]
+            );
+            return;
+        }
+    }
 
     // 2. Si el usuario tocó un botón interactivo
     if (messageType === 'interactive') {
@@ -17,7 +31,12 @@ export async function handleIncomingMessage(phone: string, message: any) {
 
             if (buttonId === 'btn_ver_turnos') {
                 const hoy = new Date();
-                const fechaFormateada = format(hoy, 'YYYY-MM-DD');
+
+                // Formateo nativo de fecha a YYYY-MM-DD sin librerías extra
+                const year = hoy.getFullYear();
+                const month = String(hoy.getMonth() + 1).padStart(2, '0');
+                const day = String(hoy.getDate()).padStart(2, '0');
+                const fechaFormateada = `${year}-${month}-${day}`;
 
                 await sendWhatsAppMessage(phone, `Buscando turnos disponibles para hoy (${fechaFormateada})... 🕒`);
 
@@ -30,17 +49,16 @@ export async function handleIncomingMessage(phone: string, message: any) {
                             where: { dayOfWeek: hoy.getDay() } // Del día de hoy
                         },
                         bookings: { // Y las reservas de hoy para cruzarlas
-                            where: { date: hoy } // Asumiendo que Prisma maneja el Date así en el where
+                            // Asumiendo que guardás la fecha en un formato compatible o reseteando la hora
+                            where: { date: hoy }
                         }
                     }
                 });
 
-                // 2. Lógica para filtrar horarios que NO estén reservados (esto es complejo y depende de tu esquema)
-                // Por ahora, para probar, enviamos una lista genérica
-
+                // 2. Armamos la lista interactiva con los datos de la BD
                 await sendInteractiveList(
                     phone,
-                    "Selecciona una cancha",
+                    "Selecciona una cancha para ver sus horarios",
                     "Canchas Disponibles",
                     canchas.map(cancha => ({
                         id: `cancha_${cancha.id}`,
