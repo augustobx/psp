@@ -44,11 +44,29 @@ export async function sendInteractiveButtons(to: string, text: string, buttons: 
         }
     };
 
-    await fetch(WHATSAPP_API_URL, {
-        method: 'POST',
-        headers: HEADERS,
-        body: JSON.stringify(payload),
-    });
+    console.log(`Intentando responder a ${to}...`); // Aviso en consola
+
+    try {
+        const response = await fetch(`https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_ID}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.WHATSAPP_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        // Si Meta nos tira bronca, lo imprimimos
+        if (data.error) {
+            console.error("❌ ERROR DE META AL RESPONDER:", data.error);
+        } else {
+            console.log("✅ Mensaje enviado con éxito a Meta:", data);
+        }
+    } catch (error) {
+        console.error("❌ Error grave en el servidor:", error);
+    }
 }
 
 // Enviar una lista interactiva (Mensaje de lista, hasta 10 opciones por sección)
