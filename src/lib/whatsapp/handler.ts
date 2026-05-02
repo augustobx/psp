@@ -5,7 +5,6 @@ import { sendWhatsAppMessage, sendInteractiveButtons, sendInteractiveList } from
 export async function handleIncomingMessage(phone: string, message: any) {
     const messageType = message.type;
 
-    // 1. Si el usuario manda un texto normal (ej: "Hola", "Quiero un turno")
     if (messageType === 'text') {
         const text = message.text.body.toLowerCase();
 
@@ -22,7 +21,6 @@ export async function handleIncomingMessage(phone: string, message: any) {
         }
     }
 
-    // 2. Si el usuario tocó un botón interactivo
     if (messageType === 'interactive') {
         const interactiveType = message.interactive.type;
 
@@ -32,25 +30,33 @@ export async function handleIncomingMessage(phone: string, message: any) {
             if (buttonId === 'btn_ver_turnos') {
                 const hoy = new Date();
 
-                // Formateo nativo de fecha a YYYY-MM-DD sin librerías extra
+                // Formateo para mostrarle al usuario
                 const year = hoy.getFullYear();
                 const month = String(hoy.getMonth() + 1).padStart(2, '0');
                 const day = String(hoy.getDate()).padStart(2, '0');
-                const fechaFormateada = `${year}-${month}-${day}`;
+                const fechaFormateada = `${day}/${month}/${year}`;
+
+                // Rango del día para filtrar en Prisma correctamente
+                const startOfDay = new Date(hoy.setHours(0, 0, 0, 0));
+                const endOfDay = new Date(hoy.setHours(23, 59, 59, 999));
 
                 await sendWhatsAppMessage(phone, `Buscando turnos disponibles para hoy (${fechaFormateada})... 🕒`);
 
-                // AHORA INTEGRAMOS CON PRISMA DE VERDAD
                 // 1. Buscamos todas las canchas disponibles
                 const canchas = await prisma.court.findMany({
                     where: { isActive: true },
                     include: {
-                        schedules: { // Y sus horarios
-                            where: { dayOfWeek: hoy.getDay() } // Del día de hoy
+                        schedules: {
+                            where: { dayOfWeek: hoy.getDay() }
                         },
-                        bookings: { // Y las reservas de hoy para cruzarlas
-                            // Asumiendo que guardás la fecha en un formato compatible o reseteando la hora
-                            where: { date: hoy }
+                        bookings: {
+                            where: {
+                                // REEMPLAZAR 'startTime' POR EL NOMBRE DE TU CAMPO EN SCHEMA.PRISMA
+                                startTime: {
+                                    gte: startOfDay,
+                                    lte: endOfDay
+                                }
+                            }
                         }
                     }
                 });
