@@ -11,10 +11,8 @@ export async function getBookingsByDate(dateStr: string) {
 
     const bookings = await prisma.booking.findMany({
       where: {
-        startTime: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
+        startTime: { gte: startOfDay, lte: endOfDay },
+        status: { not: 'CANCELLED' },
       },
       include: {
         court: true,
@@ -33,69 +31,8 @@ export async function getBookingsByDate(dateStr: string) {
   }
 }
 
-// 2. Obtener turnos disponibles (Para el Frontend Público)
-export async function getAvailableSlots(courtId: string, dateStr: string) {
-  try {
-    const targetDate = new Date(`${dateStr}T00:00:00`);
-    const dayOfWeek = targetDate.getDay();
-
-    // Buscar si la cancha abre ese día
-    const businessHour = await prisma.businessHour.findFirst({
-      where: { courtId, dayOfWeek }
-    });
-
-    if (!businessHour) return { success: true, data: [] }; // No abre
-
-    // Buscar reservas existentes para no sobreescribir
-    const startOfDay = new Date(`${dateStr}T00:00:00`);
-    const endOfDay = new Date(`${dateStr}T23:59:59`);
-
-    const existingBookings = await prisma.booking.findMany({
-      where: {
-        courtId,
-        startTime: { gte: startOfDay, lte: endOfDay },
-        status: { not: 'CANCELLED' }
-      }
-    });
-
-    // Calcular la grilla de turnos
-    const slots: string[] = [];
-    const [openHour, openMin] = businessHour.openTime.split(':').map(Number);
-    const [closeHour, closeMin] = businessHour.closeTime.split(':').map(Number);
-
-    let currentMinutes = openHour * 60 + openMin;
-    const endMinutes = closeHour * 60 + closeMin;
-    const duration = businessHour.slotDuration;
-    const now = new Date();
-
-    while (currentMinutes + duration <= endMinutes) {
-      const slotStartHour = Math.floor(currentMinutes / 60).toString().padStart(2, '0');
-      const slotStartMin = (currentMinutes % 60).toString().padStart(2, '0');
-      const timeString = `${slotStartHour}:${slotStartMin}`;
-
-      const slotStartTime = new Date(`${dateStr}T${timeString}:00`);
-
-      // Verificar si el turno ya está ocupado
-      const isOccupied = existingBookings.some(booking => {
-        return new Date(booking.startTime).getTime() === slotStartTime.getTime();
-      });
-
-      // Solo mostramos turnos que no están ocupados y que son en el futuro
-      if (!isOccupied && slotStartTime > now) {
-        slots.push(timeString);
-      }
-
-      currentMinutes += duration;
-    }
-
-    return { success: true, data: slots };
-  } catch (error) {
-    console.error('Error getting available slots:', error);
-    return { success: false, error: 'Error al calcular los turnos disponibles.' };
-  }
-}
-
-// 3. Crear una nueva reserva (Para el Frontend Público — PWA)
+// 2. Crear una nueva reserva (Para el Frontend Público — PWA)
+//    Usa Prisma $transaction para evitar CUALQUIER duplicación por race condition.
 export async function createBooking(data: {
   courtId: string;
   date: string;      // "YYYY-MM-DD"
@@ -118,21 +55,7 @@ export async function createBooking(data: {
 
     const endTime = new Date(startTime.getTime() + businessHour.slotDuration * 60000);
 
-    // Double check de disponibilidad (overlap detection)
-    const existing = await prisma.booking.findFirst({
-      where: {
-        courtId: data.courtId,
-        status: { in: ['PENDING', 'CONFIRMED', 'FIXED'] },
-        startTime: { lt: endTime },
-        endTime: { gt: startTime },
-      }
-    });
-
-    if (existing) {
-      return { success: false, error: 'Lo sentimos, este turno acaba de ser reservado.' };
-    }
-
-    // Buscar o crear usuario
+    // Buscar o crear usuario ANTES de la transacción (no es crítico para race condition)
     let user = await prisma.user.findFirst({
       where: { email: data.email }
     });
@@ -147,31 +70,45 @@ export async function createBooking(data: {
         }
       });
     } else {
-      // Actualizar datos si cambiaron
       user = await prisma.user.update({
         where: { id: user.id },
-        data: {
-          name: data.name,
-          phone: data.phone,
-        }
+        data: { name: data.name, phone: data.phone }
       });
     }
 
-    // Obtener config desde SystemSetting
+    // Obtener config
     const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
     const fee = settings?.reservationFee ?? 0;
     const requireDeposit = settings?.requireDeposit ?? false;
 
-    // Crear la reserva
-    const booking = await prisma.booking.create({
-      data: {
-        courtId: data.courtId,
-        userId: user.id,
-        startTime,
-        endTime,
-        totalAmount: requireDeposit ? fee : 0,
-        status: requireDeposit ? 'PENDING' : 'CONFIRMED',
+    // ========== TRANSACCIÓN ATÓMICA — ANTI-DUPLICACIÓN ==========
+    // Dentro de la transacción: verificar overlap + crear booking.
+    // Si 2 requests entran al mismo tiempo, solo 1 gana.
+    const booking = await prisma.$transaction(async (tx) => {
+      // Check de overlap DENTRO de la transacción (serializable)
+      const existing = await tx.booking.findFirst({
+        where: {
+          courtId: data.courtId,
+          status: { in: ['PENDING', 'CONFIRMED', 'FIXED', 'BLOCKED'] },
+          startTime: { lt: endTime },
+          endTime: { gt: startTime },
+        }
+      });
+
+      if (existing) {
+        throw new Error('SLOT_TAKEN');
       }
+
+      return tx.booking.create({
+        data: {
+          courtId: data.courtId,
+          userId: user!.id,
+          startTime,
+          endTime,
+          totalAmount: requireDeposit ? fee : 0,
+          status: requireDeposit ? 'PENDING' : 'CONFIRMED',
+        }
+      });
     });
 
     revalidatePath('/admin/calendar');
@@ -179,16 +116,13 @@ export async function createBooking(data: {
     revalidatePath('/reservas');
 
     // === NOTIFICACIONES WHATSAPP ===
-    // Importamos lazy para evitar problemas de circular dependency
     const { sendBookingConfirmation, sendBookingPendingPayment } = await import('@/lib/whatsapp/notifications');
 
     if (!requireDeposit) {
-      // SIN SEÑA → Ya está CONFIRMED, enviar confirmación directa por WhatsApp
       sendBookingConfirmation(booking.id).catch(err =>
         console.error('Error enviando confirmación WhatsApp (PWA sin seña):', err)
       );
     } else if (requireDeposit && fee > 0) {
-      // CON SEÑA → Generar link de pago y enviarlo por WhatsApp
       try {
         const { createPaymentPreference } = await import('@/actions/payments');
         const paymentResult = await createPaymentPreference(booking.id);
@@ -204,7 +138,10 @@ export async function createBooking(data: {
     }
 
     return { success: true, data: { bookingId: booking.id, fee, requireDeposit } };
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === 'SLOT_TAKEN') {
+      return { success: false, error: 'Lo sentimos, este turno acaba de ser reservado por otra persona.' };
+    }
     console.error('Error creating booking:', error);
     return { success: false, error: 'Ocurrió un error al procesar la reserva.' };
   }

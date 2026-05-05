@@ -109,12 +109,14 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
     const getBlockStyle = (status: string) => {
         if (status === 'BLOCKED') return 'bg-red-50 border-l-red-500 text-red-900 shadow-red-100';
         if (status === 'FIXED') return 'bg-purple-50 border-l-purple-500 text-purple-900 shadow-purple-100';
+        if (status === 'PENDING') return 'bg-amber-50 border-l-amber-500 text-amber-900 shadow-amber-100';
         return 'bg-emerald-100 border-l-emerald-500 text-emerald-900 shadow-emerald-100'; // CONFIRMED
     };
 
     const getIcon = (status: string) => {
         if (status === 'BLOCKED') return <Lock className="w-3.5 h-3.5 text-red-600 mr-1.5" />;
         if (status === 'FIXED') return <CalendarCheck className="w-3.5 h-3.5 text-purple-600 mr-1.5" />;
+        if (status === 'PENDING') return <Clock className="w-3.5 h-3.5 text-amber-600 mr-1.5" />;
         return <CalendarCheck className="w-3.5 h-3.5 text-emerald-600 mr-1.5" />;
     };
 
@@ -137,7 +139,8 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
 
                 <div className="flex items-center space-x-4">
                     <div className="hidden md:flex items-center space-x-4 text-sm font-semibold text-slate-600 dark:text-slate-300 mr-4">
-                        <div className="flex items-center"><span className="w-2.5 h-2.5 bg-emerald-500 rounded-full mr-2 shadow-sm"></span> Reserva</div>
+                        <div className="flex items-center"><span className="w-2.5 h-2.5 bg-emerald-500 rounded-full mr-2 shadow-sm"></span> Confirmado</div>
+                        <div className="flex items-center"><span className="w-2.5 h-2.5 bg-amber-500 rounded-full mr-2 shadow-sm"></span> Pendiente</div>
                         <div className="flex items-center"><span className="w-2.5 h-2.5 bg-red-500 rounded-full mr-2 shadow-sm"></span> Bloqueo</div>
                         <div className="flex items-center"><span className="w-2.5 h-2.5 bg-purple-500 rounded-full mr-2 shadow-sm"></span> Fijo</div>
                     </div>
@@ -324,6 +327,7 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
                                         <span className="text-sm font-semibold text-slate-500">Estado</span>
                                         <span className={`font-bold uppercase text-[10px] px-2.5 py-1 rounded-full ${selectedBooking.status === 'BLOCKED' ? 'bg-red-100 text-red-700' :
                                                 selectedBooking.status === 'FIXED' ? 'bg-purple-100 text-purple-700' :
+                                                    selectedBooking.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
                                                     'bg-emerald-100 text-emerald-700'
                                             }`}>
                                             {selectedBooking.status}

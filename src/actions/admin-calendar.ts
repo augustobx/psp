@@ -17,6 +17,7 @@ export async function getAdminDayBookings(dateStr: string) {
                 court: true,
                 user: true,
             },
+            orderBy: { startTime: 'asc' },
         });
 
         return { success: true, data: bookings };
@@ -38,22 +39,11 @@ export async function createAdminBooking(data: {
         const startTime = new Date(`${data.dateStr}T${data.startTimeStr}:00`);
         const endTime = new Date(`${data.dateStr}T${data.endTimeStr}:00`);
 
-        const existing = await prisma.booking.findFirst({
-            where: {
-                courtId: data.courtId,
-                status: { not: 'CANCELLED' },
-                AND: [
-                    { startTime: { lt: endTime } },
-                    { endTime: { gt: startTime } }
-                ]
-            }
-        });
-
-        if (existing) {
-            return { success: false, error: 'El horario seleccionado se superpone con un turno existente.' };
+        if (endTime <= startTime) {
+            return { success: false, error: 'La hora de fin debe ser posterior a la hora de inicio.' };
         }
 
-        let status: any = 'CONFIRMED';
+        let status: string = 'CONFIRMED';
         let description = data.clientName || 'Reserva Manual';
 
         if (data.type === 'BLOQUEO') {
@@ -64,23 +54,42 @@ export async function createAdminBooking(data: {
             description = data.clientName || 'Abono Fijo';
         }
 
-        await prisma.booking.create({
-            data: {
-                courtId: data.courtId,
-                startTime,
-                endTime,
-                status,
-                totalAmount: 0,
-                userId: null as any,
-                description: description,
+        // TRANSACCIÓN ATÓMICA — Anti-duplicación desde el admin
+        await prisma.$transaction(async (tx) => {
+            const existing = await tx.booking.findFirst({
+                where: {
+                    courtId: data.courtId,
+                    status: { in: ['PENDING', 'CONFIRMED', 'FIXED', 'BLOCKED'] },
+                    startTime: { lt: endTime },
+                    endTime: { gt: startTime },
+                }
+            });
+
+            if (existing) {
+                throw new Error('SLOT_TAKEN');
             }
+
+            await tx.booking.create({
+                data: {
+                    courtId: data.courtId,
+                    startTime,
+                    endTime,
+                    status: status as any,
+                    totalAmount: 0,
+                    description,
+                }
+            });
         });
 
         revalidatePath('/admin/calendar');
+        revalidatePath('/admin/dashboard');
+        revalidatePath('/reservas');
         return { success: true };
     } catch (error: any) {
+        if (error?.message === 'SLOT_TAKEN') {
+            return { success: false, error: 'El horario seleccionado se superpone con un turno existente.' };
+        }
         console.error('Error creando turno DB:', error);
-        // ACÁ ESTÁ LA CLAVE: Devolvemos el mensaje exacto de la base de datos
         return { success: false, error: error.message || 'Error desconocido en la base de datos.' };
     }
 }
@@ -92,6 +101,8 @@ export async function cancelAdminBooking(bookingId: string) {
             data: { status: 'CANCELLED' }
         });
         revalidatePath('/admin/calendar');
+        revalidatePath('/admin/dashboard');
+        revalidatePath('/reservas');
         return { success: true };
     } catch (error: any) {
         return { success: false, error: error.message || 'Error al cancelar.' };

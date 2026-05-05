@@ -532,44 +532,53 @@ async function createBookingAndSendPaymentLink(phone: string) {
         // 1. Buscar o crear usuario con nombre
         const userId = await findOrCreateUser(phone, session.clientName);
 
-        // 2. Double-check de disponibilidad
+        // 2. Obtener config de seña
+        const { fee, requireDeposit } = await getBookingSettings();
+
+        // 3. TRANSACCIÓN ATÓMICA — Anti-duplicación
         const startTime = new Date(`${session.date}T${session.slotTime}:00`);
         const endTime = new Date(`${session.date}T${session.slotEnd}:00`);
 
-        const existing = await prisma.booking.findFirst({
-            where: {
-                courtId: session.courtId,
-                status: { in: ['PENDING', 'CONFIRMED', 'FIXED'] },
-                startTime: { lt: endTime },
-                endTime: { gt: startTime },
-            },
-        });
+        let booking;
+        try {
+            booking = await prisma.$transaction(async (tx) => {
+                const existing = await tx.booking.findFirst({
+                    where: {
+                        courtId: session.courtId!,
+                        status: { in: ['PENDING', 'CONFIRMED', 'FIXED', 'BLOCKED'] },
+                        startTime: { lt: endTime },
+                        endTime: { gt: startTime },
+                    },
+                });
 
-        if (existing) {
-            await sendWhatsAppMessage(
-                phone,
-                '😔 ¡Ups! Alguien reservó este turno justo antes que vos. Intentá con otro horario.'
-            );
-            clearSession(phone);
-            await sendMainMenu(phone);
-            return;
+                if (existing) {
+                    throw new Error('SLOT_TAKEN');
+                }
+
+                return tx.booking.create({
+                    data: {
+                        courtId: session.courtId!,
+                        userId,
+                        startTime,
+                        endTime,
+                        totalAmount: requireDeposit ? fee : 0,
+                        status: requireDeposit ? 'PENDING' : 'CONFIRMED',
+                    },
+                    include: { court: true },
+                });
+            });
+        } catch (txError: any) {
+            if (txError?.message === 'SLOT_TAKEN') {
+                await sendWhatsAppMessage(
+                    phone,
+                    '😔 ¡Ups! Alguien reservó este turno justo antes que vos. Intentá con otro horario.'
+                );
+                clearSession(phone);
+                await sendMainMenu(phone);
+                return;
+            }
+            throw txError; // Re-throw for the outer catch
         }
-
-        // 3. Obtener config de seña
-        const { fee, requireDeposit } = await getBookingSettings();
-
-        // 4. Crear la reserva
-        const booking = await prisma.booking.create({
-            data: {
-                courtId: session.courtId,
-                userId,
-                startTime,
-                endTime,
-                totalAmount: requireDeposit ? fee : 0,
-                status: requireDeposit ? 'PENDING' : 'CONFIRMED',
-            },
-            include: { court: true },
-        });
 
         const clientLabel = session.clientName || phone;
 
