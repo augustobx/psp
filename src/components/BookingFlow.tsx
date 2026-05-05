@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, MapPin, Clock, ArrowRight, CheckCircle2, User, Phone, Mail, Lock, Loader2, CreditCard } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, Clock, ArrowRight, CheckCircle2, User, Phone, Lock, Loader2, CreditCard } from 'lucide-react';
 import { getAvailableSlots } from '@/actions/public-bookings';
 import { createBooking } from '@/actions/bookings';
 import { createPaymentPreference } from '@/actions/payments';
@@ -34,7 +34,8 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  //const [formData, setFormData] = useState({ name: '', phone: '', email: '' });
+  // ESTADO RESTAURADO: Solo Nombre y Teléfono (Sin email)
+  const [formData, setFormData] = useState({ name: '', phone: '' });
 
   const upcomingDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
@@ -79,6 +80,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
 
   const handleFinalSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!formData.name || !formData.phone) return;
 
     setLoading(true);
     setError('');
@@ -91,7 +93,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
         date: dateStr,
         time: selectedSlot,
         name: formData.name,
-        phone: formData.phone,        //email: formData.email,
+        phone: formData.phone,
       });
 
       if (!bookingResult.success || !bookingResult.data) {
@@ -209,7 +211,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
                       }`}
                   >
                     <span className="font-bold text-base">{court.name}</span>
-                    <span className="text-[11px] uppercase opacity-60 mt-1 font-bold">{court.surface || 'Piso Cemento'}</span>
+                    <span className="text-[11px] uppercase opacity-60 mt-1 font-bold">{court.surface || 'Piso Sintético'}</span>
                   </button>
                 ))}
               </div>
@@ -345,7 +347,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
           ) : (
             <button
               onClick={handleFinalSubmit}
-              disabled={loading || !formData.name || !formData.phone || !formData.email}
+              disabled={loading || !formData.name || !formData.phone}
               className="w-full flex items-center justify-center bg-slate-900 dark:bg-emerald-500 text-white font-bold text-lg py-4 rounded-2xl shadow-xl transition-all hover:bg-black dark:hover:bg-emerald-600 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
