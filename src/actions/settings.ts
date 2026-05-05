@@ -15,13 +15,13 @@ export async function getSettings() {
 
 export async function updateSystemSettings(formData: FormData) {
     try {
-        // 1. Toggles Booleanos
-        const reservationsEnabled = formData.has("reservationsEnabled");
-        const whatsappReservations = formData.has("whatsappReservations");
-        const pwaEnabled = formData.has("pwaEnabled");
-        const autoWhatsapp = formData.has("autoWhatsapp");
-        const bubbleActive = formData.has("bubbleActive");
-        const requireDeposit = formData.has("requireDeposit");
+        // 1. Toggles Booleanos (Ahora leemos estrictamente si traen "true")
+        const reservationsEnabled = formData.get("reservationsEnabled") === "true";
+        const whatsappReservations = formData.get("whatsappReservations") === "true";
+        const pwaEnabled = formData.get("pwaEnabled") === "true";
+        const autoWhatsapp = formData.get("autoWhatsapp") === "true";
+        const bubbleActive = formData.get("bubbleActive") === "true";
+        const requireDeposit = formData.get("requireDeposit") === "true";
 
         // 2. Textos y Números
         const clubName = formData.get("clubName") as string;
