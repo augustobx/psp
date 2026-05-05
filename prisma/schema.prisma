@@ -247,9 +247,9 @@ model SystemSetting {
   theme            String   @default("light")
   
   // --- MENSAJES DE WHATSAPP (Personalizables) ---
-  wspWelcome       String   @default("¡Hola! 👋 Bienvenido a *{clubName}*.\n¿Qué querés hacer hoy?") @db.Text
-  wspConfirmed     String   @default("✅ *¡Turno confirmado, {clientName}!*\n\nTu cancha está reservada. {sportEmoji}\n\n📍 *Cancha:* {courtName}\n📅 *Fecha:* {date}\n🕐 *Horario:* {startTime} - {endTime}\n📌 *Estado:* ✅ Confirmado\n\n¡Te esperamos en {clubName}! 💪") @db.Text
-  wspPending       String   @default("{sportEmoji} *¡Reserva registrada, {clientName}!*\n\n📍 *Cancha:* {courtName}\n📅 *Fecha:* {date}\n🕐 *Horario:* {startTime} - {endTime}\n💰 *Seña:* ${fee}\n\n📌 *Estado:* ⏳ Pendiente de pago\n\n👇 *Pagá la seña para confirmar tu turno:*\n{paymentLink}\n\n⏱️ _Tenés 5 minutos para pagar, sino el turno se libera automáticamente._") @db.Text
+  wspWelcome       String?  @db.Text
+  wspConfirmed     String?  @db.Text
+  wspPending       String?  @db.Text
   
   updatedAt        DateTime @updatedAt
 }
