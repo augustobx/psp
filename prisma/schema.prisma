@@ -223,27 +223,33 @@ model TournamentMatch {
 model SystemSetting {
   id               Int      @id @default(1)
   
-  // --- DATOS DEL CLUB Y PAGOS (Los tuyos) ---
+  // --- DATOS DEL CLUB Y PAGOS ---
   clubName         String   @default("Padel Club")
   contactPhone     String   @default("")
   mpAccessToken    String   @default("")
   reservationFee   Float    @default(0)
+  sportEmoji       String   @default("🎾")
   
-  // --- CONFIGURACIÓN DE LA APP / PWA (Nuevos) ---
-  // Splash
+  // --- FEATURE TOGGLES ---
+  pwaEnabled       Boolean  @default(true)
+  autoWhatsapp     Boolean  @default(false)
+  requireDeposit   Boolean  @default(true)
+  
+  // --- CONFIGURACIÓN DE LA APP / PWA ---
   splashLogo       String   @default("PSP")
   splashDuration   Int      @default(1500)
   
-  // Globo (Bubble)
   bubbleActive     Boolean  @default(false)
   bubbleText       String   @default("¡Bienvenidos al club! 🎾")
   bubbleDuration   Int      @default(3000)
   bubbleColor      String   @default("#10b981")
   
-  // Apariencia y Negocio
   theme            String   @default("light")
-  requireDeposit   Boolean  @default(true)
-  autoWhatsapp     Boolean  @default(false)
+  
+  // --- MENSAJES DE WHATSAPP (Personalizables) ---
+  wspWelcome       String   @default("¡Hola! 👋 Bienvenido a *{clubName}*.\n¿Qué querés hacer hoy?") @db.Text
+  wspConfirmed     String   @default("✅ *¡Turno confirmado, {clientName}!*\n\nTu cancha está reservada. {sportEmoji}\n\n📍 *Cancha:* {courtName}\n📅 *Fecha:* {date}\n🕐 *Horario:* {startTime} - {endTime}\n📌 *Estado:* ✅ Confirmado\n\n¡Te esperamos en {clubName}! 💪") @db.Text
+  wspPending       String   @default("{sportEmoji} *¡Reserva registrada, {clientName}!*\n\n📍 *Cancha:* {courtName}\n📅 *Fecha:* {date}\n🕐 *Horario:* {startTime} - {endTime}\n💰 *Seña:* ${fee}\n\n📌 *Estado:* ⏳ Pendiente de pago\n\n👇 *Pagá la seña para confirmar tu turno:*\n{paymentLink}\n\n⏱️ _Tenés 5 minutos para pagar, sino el turno se libera automáticamente._") @db.Text
   
   updatedAt        DateTime @updatedAt
 }

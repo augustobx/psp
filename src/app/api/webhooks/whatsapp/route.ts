@@ -39,10 +39,18 @@ export async function POST(request: Request) {
         const phone = message?.from;
 
         if (message && phone) {
+            // Chequear si el bot está activado en el panel admin
+            const { prisma } = await import('@/lib/prisma');
+            const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+            
+            if (settings && settings.autoWhatsapp === false) {
+                // El bot está apagado. Retornamos OK para que Meta no reintente, pero ignoramos el mensaje.
+                return NextResponse.json({ status: 'ignored_bot_disabled' });
+            }
+
             console.log(`📩 Mensaje de ${phone} | Tipo: ${message.type}`);
 
             // Procesamos en background para responder rápido a Meta (tienen timeout de 5s)
-            // Pero en Next.js Route Handlers, el await es necesario para que se ejecute
             await handleIncomingMessage(phone, message);
         }
 

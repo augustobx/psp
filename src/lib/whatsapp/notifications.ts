@@ -65,6 +65,13 @@ function normalizePhoneForWhatsApp(phone: string): string {
     return digits;
 }
 
+/** Reemplaza variables en el texto del template ({variable}) */
+function fillTemplate(template: string, vars: Record<string, string>): string {
+    return template.replace(/\{(\w+)\}/g, (match, key) => {
+        return vars[key] !== undefined ? vars[key] : match;
+    });
+}
+
 // ============================================================================
 // CONFIRMACIÓN DE BOOKING — Se dispara post-pago (MP webhook) o directo (sin seña)
 // Funciona para CUALQUIER booking (WhatsApp o PWA)
@@ -85,11 +92,7 @@ export async function sendBookingConfirmation(bookingId: string): Promise<void> 
         }
 
         const rawPhone = booking.user.phone;
-
-        if (!rawPhone) {
-            console.warn(`⚠️ Usuario ${booking.user.id} no tiene teléfono, no se envía WhatsApp`);
-            return;
-        }
+        if (!rawPhone) return;
 
         const phone = normalizePhoneForWhatsApp(rawPhone);
         const clientName = booking.user.name || `Cliente ${phone.slice(-4)}`;
@@ -97,23 +100,29 @@ export async function sendBookingConfirmation(bookingId: string): Promise<void> 
         const horaInicio = formatTime(booking.startTime);
         const horaFin = formatTime(booking.endTime);
         const amount = Number(booking.totalAmount);
-        const priceText = amount > 0 ? `\n💰 *Seña pagada:* $${amount.toLocaleString('es-AR')}` : '';
 
-        const message =
-            `✅ *¡Turno confirmado, ${clientName}!*\n\n` +
-            `Tu cancha está reservada. 🎾\n\n` +
-            `📍 *Cancha:* ${booking.court.name}\n` +
-            `📅 *Fecha:* ${fecha}\n` +
-            `🕐 *Horario:* ${horaInicio} - ${horaFin}` +
-            priceText +
-            `\n📌 *Estado:* ✅ Confirmado\n\n` +
-            `¡Te esperamos en PSP Padel Club! 💪`;
+        // Obtener configuración para el template
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        const clubName = settings?.clubName || 'Padel Club';
+        const sportEmoji = settings?.sportEmoji || '🎾';
+        const template = settings?.wspConfirmed || `✅ *¡Turno confirmado, {clientName}!*\n\nTu cancha está reservada. {sportEmoji}\n\n📍 *Cancha:* {courtName}\n📅 *Fecha:* {date}\n🕐 *Horario:* {startTime} - {endTime}\n📌 *Estado:* ✅ Confirmado\n\n¡Te esperamos en {clubName}! 💪`;
+
+        const message = fillTemplate(template, {
+            clubName,
+            clientName,
+            courtName: booking.court.name,
+            date: fecha,
+            startTime: horaInicio,
+            endTime: horaFin,
+            fee: amount.toString(),
+            paymentLink: '',
+            sportEmoji,
+        });
 
         await sendWhatsAppMessage(phone, message);
         console.log(`📩 Confirmación WhatsApp enviada a ${phone} para booking ${bookingId}`);
     } catch (error) {
         console.error(`❌ Error enviando confirmación WhatsApp para booking ${bookingId}:`, error);
-        // No lanzamos el error para no romper flujos que nos llaman
     }
 }
 
@@ -145,15 +154,23 @@ export async function sendBookingPendingPayment(
         const horaFin = formatTime(booking.endTime);
         const amount = Number(booking.totalAmount);
 
-        const message =
-            `🎾 *¡Reserva registrada, ${clientName}!*\n\n` +
-            `📍 *Cancha:* ${booking.court.name}\n` +
-            `📅 *Fecha:* ${fecha}\n` +
-            `🕐 *Horario:* ${horaInicio} - ${horaFin}\n` +
-            `💰 *Seña:* $${amount.toLocaleString('es-AR')}\n\n` +
-            `📌 *Estado:* ⏳ Pendiente de pago\n\n` +
-            `👇 *Pagá la seña para confirmar tu turno:*\n${paymentLink}\n\n` +
-            `⏱️ _Tenés 5 minutos para pagar, sino el turno se libera automáticamente._`;
+        // Obtener configuración para el template
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        const clubName = settings?.clubName || 'Padel Club';
+        const sportEmoji = settings?.sportEmoji || '🎾';
+        const template = settings?.wspPending || `{sportEmoji} *¡Reserva registrada, {clientName}!*\n\n📍 *Cancha:* {courtName}\n📅 *Fecha:* {date}\n🕐 *Horario:* {startTime} - {endTime}\n💰 *Seña:* \${fee}\n\n📌 *Estado:* ⏳ Pendiente de pago\n\n👇 *Pagá la seña para confirmar tu turno:*\n{paymentLink}\n\n⏱️ _Tenés 5 minutos para pagar, sino el turno se libera automáticamente._`;
+
+        const message = fillTemplate(template, {
+            clubName,
+            clientName,
+            courtName: booking.court.name,
+            date: fecha,
+            startTime: horaInicio,
+            endTime: horaFin,
+            fee: amount.toString(),
+            paymentLink,
+            sportEmoji,
+        });
 
         await sendWhatsAppMessage(phone, message);
         console.log(`📩 Link de pago WhatsApp enviado a ${phone} para booking ${bookingId}`);

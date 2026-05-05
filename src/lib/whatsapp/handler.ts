@@ -223,9 +223,19 @@ export async function handleIncomingMessage(phone: string, message: any) {
 // MENÚ PRINCIPAL
 // ============================================================================
 async function sendMainMenu(phone: string) {
+    const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+    const clubName = settings?.clubName || 'Padel Club';
+    const template = settings?.wspWelcome || '¡Hola! 👋 Bienvenido a *{clubName}*.\n¿Qué querés hacer hoy?';
+    
+    // Replace {clubName} and others just in case
+    const message = template.replace(/\{(\w+)\}/g, (match, key) => {
+        if (key === 'clubName') return clubName;
+        return match;
+    });
+
     await sendInteractiveButtons(
         phone,
-        '¡Hola! 👋 Bienvenido a *PSP Padel Club*.\n¿Qué querés hacer hoy?',
+        message,
         [
             { id: 'btn_reservar', title: '🎾 Reservar Turno' },
             { id: 'btn_mis_reservas', title: '📋 Mis Reservas' },

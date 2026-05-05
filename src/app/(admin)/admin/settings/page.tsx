@@ -59,9 +59,15 @@ export default function SettingsPage() {
                 <div className="space-y-6 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200">
                     <h3 className="font-black text-lg text-slate-800 flex items-center">🏢 Datos del Club y Pagos</h3>
 
-                    <div className="space-y-3">
-                        <Label>Nombre del Club</Label>
-                        <Input value={settings.clubName || ''} onChange={e => setSettings({ ...settings, clubName: e.target.value })} placeholder="Ej: San Pedro Padel" className="bg-white" />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                            <Label>Nombre del Club</Label>
+                            <Input value={settings.clubName || ''} onChange={e => setSettings({ ...settings, clubName: e.target.value })} placeholder="Ej: San Pedro Padel" className="bg-white" />
+                        </div>
+                        <div className="space-y-3">
+                            <Label>Emoji Deporte</Label>
+                            <Input value={settings.sportEmoji || ''} onChange={e => setSettings({ ...settings, sportEmoji: e.target.value })} placeholder="🎾" className="bg-white" />
+                        </div>
                     </div>
 
                     <div className="space-y-3">
@@ -84,9 +90,34 @@ export default function SettingsPage() {
                             <input type="checkbox" checked={settings.requireDeposit} onChange={e => setSettings({ ...settings, requireDeposit: e.target.checked })} className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
                             <Label className="font-bold">Exigir pago de seña obligatorio</Label>
                         </div>
-                        <div className="flex items-center space-x-3 opacity-70">
+                        <div className="flex items-center space-x-3 opacity-90">
                             <input type="checkbox" checked={settings.autoWhatsapp} onChange={e => setSettings({ ...settings, autoWhatsapp: e.target.checked })} className="w-5 h-5 rounded border-slate-300" />
                             <Label>Activar Bot automático de WhatsApp</Label>
+                        </div>
+                        <div className="flex items-center space-x-3 opacity-90">
+                            <input type="checkbox" checked={settings.pwaEnabled} onChange={e => setSettings({ ...settings, pwaEnabled: e.target.checked })} className="w-5 h-5 rounded border-slate-300" />
+                            <Label>Activar PWA (Sitio Web Público)</Label>
+                        </div>
+                    </div>
+                </div>
+
+                {/* BLOQUE 3: MENSAJES DE WHATSAPP */}
+                <div className="space-y-6 bg-green-50/50 dark:bg-green-900/10 p-6 rounded-2xl border border-green-200 dark:border-green-800 md:col-span-2">
+                    <h3 className="font-black text-lg text-green-800 dark:text-green-400 flex items-center">💬 Mensajes de WhatsApp Automáticos</h3>
+                    <p className="text-sm text-slate-500">Variables disponibles: <code className="text-xs bg-slate-100 p-1 rounded">&#123;clubName&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;clientName&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;courtName&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;date&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;startTime&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;endTime&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;fee&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;paymentLink&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;sportEmoji&#125;</code></p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-3">
+                            <Label>Mensaje de Bienvenida (Bot)</Label>
+                            <textarea rows={6} className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none" value={settings.wspWelcome || ''} onChange={e => setSettings({ ...settings, wspWelcome: e.target.value })}></textarea>
+                        </div>
+                        <div className="space-y-3">
+                            <Label>Turno Pendiente de Pago</Label>
+                            <textarea rows={6} className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none" value={settings.wspPending || ''} onChange={e => setSettings({ ...settings, wspPending: e.target.value })}></textarea>
+                        </div>
+                        <div className="space-y-3">
+                            <Label>Turno Confirmado</Label>
+                            <textarea rows={6} className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none" value={settings.wspConfirmed || ''} onChange={e => setSettings({ ...settings, wspConfirmed: e.target.value })}></textarea>
                         </div>
                     </div>
                 </div>
