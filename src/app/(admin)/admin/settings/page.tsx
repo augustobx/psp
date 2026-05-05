@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma"; // <-- Cambiado: Agregadas las llaves { }
+import { prisma } from "@/lib/prisma";
 import { updateSystemSettings } from "@/actions/settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ export default async function SettingsPage() {
 
     if (!settings) {
         settings = await prisma.systemSetting.create({
-            data: { clubName: "PSP Padel", contactPhone: "", reservationFee: 0, mpAccessToken: "" }
+            data: { clubName: "PSP Padel", contactPhone: "", reservationFee: 0, mpAccessToken: "", theme: "light" }
         });
     }
 
@@ -33,22 +33,33 @@ export default async function SettingsPage() {
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="clubName">Nombre del Complejo</Label>
-                                <Input
-                                    id="clubName"
-                                    name="clubName"
-                                    defaultValue={settings.clubName}
-                                    placeholder="Ej: PSP Padel"
-                                    required
-                                />
+                                <Input id="clubName" name="clubName" defaultValue={settings.clubName} required />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="contactPhone">Teléfono de Contacto</Label>
-                                <Input
-                                    id="contactPhone"
-                                    name="contactPhone"
-                                    defaultValue={settings.contactPhone}
-                                    placeholder="Ej: +54 9 3329..."
-                                />
+                                <Label htmlFor="contactPhone">Teléfono de Contacto (WhatsApp)</Label>
+                                <Input id="contactPhone" name="contactPhone" defaultValue={settings.contactPhone} placeholder="Ej: 5493329..." />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* BLOQUE NUEVO: Apariencia y Colores */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Apariencia</CardTitle>
+                            <CardDescription>Configuración visual de la web.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="theme">Tema (Color)</Label>
+                                <select
+                                    id="theme"
+                                    name="theme"
+                                    defaultValue={settings.theme || 'light'}
+                                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                                >
+                                    <option value="light">Claro (Light)</option>
+                                    <option value="dark">Oscuro (Dark)</option>
+                                </select>
                             </div>
                         </CardContent>
                     </Card>
@@ -62,67 +73,42 @@ export default async function SettingsPage() {
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="reservationFee">Costo de la Seña ($)</Label>
-                                <Input
-                                    id="reservationFee"
-                                    name="reservationFee"
-                                    type="number"
-                                    defaultValue={settings.reservationFee}
-                                    required
-                                />
+                                <Input id="reservationFee" name="reservationFee" type="number" defaultValue={settings.reservationFee} required />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="mpAccessToken">MercadoPago Access Token</Label>
-                                <Input
-                                    id="mpAccessToken"
-                                    name="mpAccessToken"
-                                    type="password"
-                                    defaultValue={settings.mpAccessToken}
-                                    placeholder="APP_USR-..."
-                                />
+                                <Input id="mpAccessToken" name="mpAccessToken" type="password" defaultValue={settings.mpAccessToken} />
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* BLOQUE 3: Integración WhatsApp (Simplificada) */}
+                    {/* BLOQUE 3: Funciones del Sistema */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Módulo WhatsApp</CardTitle>
-                            <CardDescription>La API de Meta tomará el nombre del complejo de esta configuración.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
-                                <div className="space-y-0.5">
-                                    <Label htmlFor="autoWhatsapp" className="text-base font-medium">Activar Notificaciones de Meta</Label>
-                                    <p className="text-sm text-gray-500">Enviar confirmaciones y recordatorios por WhatsApp automáticamente.</p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        id="autoWhatsapp"
-                                        name="autoWhatsapp"
-                                        defaultChecked={settings.autoWhatsapp}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* BLOQUE 4: Funciones Adicionales (PWA / Burbuja) */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Funciones del Sistema</CardTitle>
-                            <CardDescription>Activa o desactiva módulos de la web.</CardDescription>
+                            <CardTitle>Módulos del Sistema</CardTitle>
+                            <CardDescription>Activa o desactiva funcionalidades.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                            {/* Switch de WhatsApp */}
                             <div className="flex items-center justify-between p-4 border rounded-lg">
                                 <div className="space-y-0.5">
-                                    <Label htmlFor="pwaEnabled">Modo App (PWA)</Label>
-                                    <p className="text-sm text-gray-500">Permite instalar la web en el celular.</p>
+                                    <Label htmlFor="autoWhatsapp">Notificaciones Meta API</Label>
+                                    <p className="text-sm text-gray-500">Enviar confirmaciones automáticas.</p>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="pwaEnabled" name="pwaEnabled" defaultChecked={settings.pwaEnabled} className="sr-only peer" />
+                                    <input type="checkbox" id="autoWhatsapp" name="autoWhatsapp" value="on" defaultChecked={settings.autoWhatsapp} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            {/* Switch de PWA (Ahora sí funciona) */}
+                            <div className="flex items-center justify-between p-4 border rounded-lg">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor="pwaEnabled">Habilitar Reservas Web (PWA)</Label>
+                                    <p className="text-sm text-gray-500">Si se apaga, redirige a WhatsApp.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="pwaEnabled" name="pwaEnabled" value="on" defaultChecked={settings.pwaEnabled} className="sr-only peer" />
                                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                 </label>
                             </div>
@@ -132,9 +118,7 @@ export default async function SettingsPage() {
                 </div>
 
                 <div className="flex justify-end pt-6">
-                    <Button type="submit" size="lg" className="w-full md:w-auto">
-                        Guardar Cambios
-                    </Button>
+                    <Button type="submit" size="lg" className="w-full md:w-auto">Guardar Cambios</Button>
                 </div>
             </form>
         </div>

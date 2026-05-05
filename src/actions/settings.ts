@@ -15,6 +15,7 @@ export async function getSettings() {
 
 export async function updateSystemSettings(formData: FormData) {
     try {
+        // Si el checkbox está marcado, formData manda "on". Si no, es null.
         const autoWhatsapp = formData.get("autoWhatsapp") === "on";
         const bubbleActive = formData.get("bubbleActive") === "on";
         const pwaEnabled = formData.get("pwaEnabled") === "on";
@@ -23,6 +24,7 @@ export async function updateSystemSettings(formData: FormData) {
         const contactPhone = formData.get("contactPhone") as string;
         const reservationFee = Number(formData.get("reservationFee"));
         const mpAccessToken = formData.get("mpAccessToken") as string;
+        const theme = formData.get("theme") as string; // Restauramos el tema/color
 
         await prisma.systemSetting.update({
             where: { id: 1 },
@@ -34,13 +36,13 @@ export async function updateSystemSettings(formData: FormData) {
                 autoWhatsapp,
                 bubbleActive,
                 pwaEnabled,
+                theme, // Lo guardamos
             },
         });
 
         revalidatePath("/admin/settings");
         revalidatePath("/");
 
-        // Eliminamos los "return { success... }" para que la función sea Promise<void>
     } catch (error) {
         console.error("Error updating settings:", error);
     }
