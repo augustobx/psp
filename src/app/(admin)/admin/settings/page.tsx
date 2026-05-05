@@ -27,8 +27,8 @@ export default async function SettingsPage() {
                 <p className="text-gray-500">Administra las preferencias generales, reservas y PWA.</p>
             </div>
 
-            {/* CLAVE: El key dinámico fuerza a React a refrescar los uncontrolled inputs (checkboxes) tras un guardado exitoso */}
-            <form action={updateSystemSettings} className="space-y-6" key={settings.updatedAt?.toString()}>
+            {/* El atributo key actualiza el formulario forzosamente tras el guardado del servidor */}
+            <form action={updateSystemSettings} className="space-y-6" key={settings.updatedAt?.toISOString()}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                     {/* GENERAL Y APARIENCIA */}
@@ -76,7 +76,7 @@ export default async function SettingsPage() {
                                         <p className="text-xs text-gray-500">Si se apaga, pausará la grilla web.</p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" id="reservationsEnabled" name="reservationsEnabled" value="true" defaultChecked={settings.reservationsEnabled} className="sr-only peer" />
+                                        <input type="checkbox" id="reservationsEnabled" name="reservationsEnabled" defaultChecked={settings.reservationsEnabled} className="sr-only peer" />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -87,7 +87,7 @@ export default async function SettingsPage() {
                                         <p className="text-xs text-gray-500">Muestra el botón de WhatsApp a los clientes.</p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" id="whatsappReservations" name="whatsappReservations" value="true" defaultChecked={settings.whatsappReservations} className="sr-only peer" />
+                                        <input type="checkbox" id="whatsappReservations" name="whatsappReservations" defaultChecked={settings.whatsappReservations} className="sr-only peer" />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -110,7 +110,7 @@ export default async function SettingsPage() {
                                     </div>
                                     <div className="space-y-2 pt-8">
                                         <label className="flex items-center gap-2 cursor-pointer">
-                                            <input type="checkbox" id="requireDeposit" name="requireDeposit" value="true" defaultChecked={settings.requireDeposit} className="w-4 h-4 rounded border-gray-300" />
+                                            <input type="checkbox" id="requireDeposit" name="requireDeposit" defaultChecked={settings.requireDeposit} className="w-4 h-4 rounded border-gray-300" />
                                             <span className="text-sm font-medium">Requerir Seña</span>
                                         </label>
                                     </div>
@@ -122,7 +122,7 @@ export default async function SettingsPage() {
                                 <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50 mt-2">
                                     <Label htmlFor="autoWhatsapp">Notificaciones Automáticas API Meta</Label>
                                     <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" id="autoWhatsapp" name="autoWhatsapp" value="true" defaultChecked={settings.autoWhatsapp} className="sr-only peer" />
+                                        <input type="checkbox" id="autoWhatsapp" name="autoWhatsapp" defaultChecked={settings.autoWhatsapp} className="sr-only peer" />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -138,7 +138,7 @@ export default async function SettingsPage() {
                                 <div className="flex items-center justify-between p-3 border rounded-lg">
                                     <Label htmlFor="bubbleActive">Activar Burbuja</Label>
                                     <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" id="bubbleActive" name="bubbleActive" value="true" defaultChecked={settings.bubbleActive} className="sr-only peer" />
+                                        <input type="checkbox" id="bubbleActive" name="bubbleActive" defaultChecked={settings.bubbleActive} className="sr-only peer" />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
@@ -176,7 +176,7 @@ export default async function SettingsPage() {
                                     <p className="text-sm text-gray-500">Habilita el comportamiento de app.</p>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="pwaEnabled" name="pwaEnabled" value="true" defaultChecked={settings.pwaEnabled} className="sr-only peer" />
+                                    <input type="checkbox" id="pwaEnabled" name="pwaEnabled" defaultChecked={settings.pwaEnabled} className="sr-only peer" />
                                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                 </label>
                             </div>
