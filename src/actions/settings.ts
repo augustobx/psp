@@ -15,16 +15,21 @@ export async function getSettings() {
 
 export async function updateSystemSettings(formData: FormData) {
     try {
-        // Si el checkbox está marcado, formData manda "on". Si no, es null.
-        const autoWhatsapp = formData.get("autoWhatsapp") === "on";
-        const bubbleActive = formData.get("bubbleActive") === "on";
-        const pwaEnabled = formData.get("pwaEnabled") === "on";
+        // La forma correcta y robusta de leer checkboxes en Server Actions:
+        // Si está marcado, "has" devuelve true. Si está desmarcado, devuelve false.
+        const autoWhatsapp = formData.has("autoWhatsapp");
+        const bubbleActive = formData.has("bubbleActive");
+        const pwaEnabled = formData.has("pwaEnabled");
 
         const clubName = formData.get("clubName") as string;
         const contactPhone = formData.get("contactPhone") as string;
         const reservationFee = Number(formData.get("reservationFee"));
         const mpAccessToken = formData.get("mpAccessToken") as string;
-        const theme = formData.get("theme") as string; // Restauramos el tema/color
+        const theme = formData.get("theme") as string;
+
+        // Capturamos las variables del Splash Screen
+        const splashLogo = formData.get("splashLogo") as string;
+        const splashDuration = Number(formData.get("splashDuration"));
 
         await prisma.systemSetting.update({
             where: { id: 1 },
@@ -36,7 +41,9 @@ export async function updateSystemSettings(formData: FormData) {
                 autoWhatsapp,
                 bubbleActive,
                 pwaEnabled,
-                theme, // Lo guardamos
+                theme,
+                splashLogo,
+                splashDuration,
             },
         });
 

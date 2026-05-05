@@ -10,7 +10,17 @@ export default async function SettingsPage() {
 
     if (!settings) {
         settings = await prisma.systemSetting.create({
-            data: { clubName: "PSP Padel", contactPhone: "", reservationFee: 0, mpAccessToken: "", theme: "light" }
+            data: {
+                clubName: "PSP Padel",
+                contactPhone: "",
+                reservationFee: 0,
+                mpAccessToken: "",
+                theme: "light",
+                splashLogo: "",
+                splashDuration: 3000,
+                bubbleActive: true,
+                pwaEnabled: true
+            }
         });
     }
 
@@ -42,7 +52,7 @@ export default async function SettingsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* BLOQUE NUEVO: Apariencia y Colores */}
+                    {/* BLOQUE 2: Apariencia y Colores */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Apariencia</CardTitle>
@@ -64,7 +74,7 @@ export default async function SettingsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* BLOQUE 2: Reservas y Pagos */}
+                    {/* BLOQUE 3: Reservas y Pagos */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Reservas y Pagos</CardTitle>
@@ -82,36 +92,71 @@ export default async function SettingsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* BLOQUE 3: Funciones del Sistema */}
+                    {/* BLOQUE 4: WhatsApp */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Módulos del Sistema</CardTitle>
-                            <CardDescription>Activa o desactiva funcionalidades.</CardDescription>
+                            <CardTitle>Notificaciones</CardTitle>
+                            <CardDescription>Envíos por API de Meta.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {/* Switch de WhatsApp */}
                             <div className="flex items-center justify-between p-4 border rounded-lg">
                                 <div className="space-y-0.5">
-                                    <Label htmlFor="autoWhatsapp">Notificaciones Meta API</Label>
-                                    <p className="text-sm text-gray-500">Enviar confirmaciones automáticas.</p>
+                                    <Label htmlFor="autoWhatsapp">Notificaciones WhatsApp</Label>
+                                    <p className="text-sm text-gray-500">Confirmaciones automáticas.</p>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="autoWhatsapp" name="autoWhatsapp" value="on" defaultChecked={settings.autoWhatsapp} className="sr-only peer" />
+                                    <input type="checkbox" id="autoWhatsapp" name="autoWhatsapp" defaultChecked={settings.autoWhatsapp} className="sr-only peer" />
                                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                 </label>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* BLOQUE 5: PWA, Splash Screen y Estado (Abarca 2 columnas) */}
+                    <Card className="md:col-span-2">
+                        <CardHeader>
+                            <CardTitle>Configuración PWA (Aplicación Web)</CardTitle>
+                            <CardDescription>Controla el splash screen, la burbuja de instalación y si el sistema está operativo.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="splashLogo">Logo del Splash Screen (URL)</Label>
+                                    <Input id="splashLogo" name="splashLogo" defaultValue={settings.splashLogo || ''} placeholder="Ej: /logo.png o https://..." />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="splashDuration">Duración del Splash (Milisegundos)</Label>
+                                    <Input id="splashDuration" name="splashDuration" type="number" defaultValue={settings.splashDuration || 3000} placeholder="Ej: 3000 para 3 segundos" />
+                                </div>
                             </div>
 
-                            {/* Switch de PWA (Ahora sí funciona) */}
-                            <div className="flex items-center justify-between p-4 border rounded-lg">
-                                <div className="space-y-0.5">
-                                    <Label htmlFor="pwaEnabled">Habilitar Reservas Web (PWA)</Label>
-                                    <p className="text-sm text-gray-500">Si se apaga, redirige a WhatsApp.</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Switch de Burbuja PWA */}
+                                <div className="flex items-center justify-between p-4 border rounded-lg">
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor="bubbleActive">Globo de Instalación PWA</Label>
+                                        <p className="text-sm text-gray-500">Sugerir a los usuarios instalar la App.</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="bubbleActive" name="bubbleActive" defaultChecked={settings.bubbleActive} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
                                 </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" id="pwaEnabled" name="pwaEnabled" value="on" defaultChecked={settings.pwaEnabled} className="sr-only peer" />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
+
+                                {/* Switch Maestro de PWA */}
+                                <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50/50">
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor="pwaEnabled" className="text-red-700">Habilitar Sistema de Reservas</Label>
+                                        <p className="text-sm text-red-600">Si se apaga, pausará la web y enviará al chat de WhatsApp.</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="pwaEnabled" name="pwaEnabled" defaultChecked={settings.pwaEnabled} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
                             </div>
+
                         </CardContent>
                     </Card>
 
