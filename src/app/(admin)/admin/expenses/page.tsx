@@ -1,36 +1,22 @@
-export const dynamic = 'force-dynamic';
-import { prisma } from '@/lib/prisma';
-import AdminDataTable from '@/components/AdminDataTable';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { getExpenses } from "@/actions/expenses";
+import ExpensesManager from "./ExpensesManager";
 
-export default async function AdminExpensesPage() {
-  const expenses = await prisma.expense.findMany({
-    orderBy: { date: 'desc' }
-  });
+export default async function ExpensesPage() {
+  // Por defecto cargamos el mes actual al entrar
+  const res = await getExpenses(new Date());
+  const initialExpenses = res.success && res.data ? res.data.expenses : [];
+  const initialTotal = res.success && res.data ? res.data.totalAmount : 0;
 
   return (
-    <div className="p-8 space-y-8 min-h-screen bg-slate-50 dark:bg-slate-900">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Registro de Gastos</h1>
-          <p className="text-slate-500 mt-1">Control financiero y egresos del club.</p>
-        </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Registrar Gasto
-        </Button>
+    <div className="space-y-6 max-w-[1200px] mx-auto">
+      <div>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+          Gestión de Gastos
+        </h1>
+        <p className="text-slate-500 font-medium">Llevá el control de las salidas de dinero del complejo.</p>
       </div>
 
-      <AdminDataTable 
-        data={expenses}
-        columns={[
-          { key: 'date', header: 'Fecha', render: (val) => new Date(String(val)).toLocaleDateString() },
-          { key: 'description', header: 'Descripción' },
-          { key: 'category', header: 'Categoría' },
-          { key: 'amount', header: 'Monto', render: (val) => `$${Number(val).toFixed(2)}` },
-        ]}
-      />
+      <ExpensesManager initialExpenses={initialExpenses} initialTotal={initialTotal} />
     </div>
   );
 }
