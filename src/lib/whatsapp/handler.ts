@@ -73,8 +73,17 @@ async function generatePaymentLink(bookingId: string): Promise<string | null> {
 
         if (!booking) return null;
 
+        // Leer el token de MP desde SystemSetting (lo configura el admin desde la web)
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        const mpToken = settings?.mpAccessToken;
+
+        if (!mpToken) {
+            console.error('❌ No hay mpAccessToken configurado en SystemSetting');
+            return null;
+        }
+
         const client = new MercadoPagoConfig({
-            accessToken: process.env.MP_ACCESS_TOKEN as string,
+            accessToken: mpToken,
         });
 
         const preference = new Preference(client);

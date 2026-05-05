@@ -3,10 +3,6 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { prisma } from '@/lib/prisma';
 
-const client = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN as string,
-});
-
 export async function createPaymentPreference(bookingId: string) {
   try {
     const booking = await prisma.booking.findUnique({
@@ -21,30 +17,44 @@ export async function createPaymentPreference(bookingId: string) {
       throw new Error('Reserva no encontrada');
     }
 
+    // Leer el token de MP desde SystemSetting (lo configura el admin desde la web)
+    const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+    const mpToken = settings?.mpAccessToken;
+
+    if (!mpToken) {
+      return { success: false, error: 'No hay token de MercadoPago configurado en el panel de admin.' };
+    }
+
+    const client = new MercadoPagoConfig({
+      accessToken: mpToken,
+    });
+
     const preference = new Preference(client);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000';
 
     const result = await preference.create({
       body: {
         items: [
           {
             id: booking.id,
-            title: `Reserva Cancha ${booking.court.name}`,
+            title: `Seña - ${booking.court.name}`,
             quantity: 1,
             unit_price: Number(booking.totalAmount),
             currency_id: 'ARS',
           }
         ],
         payer: {
-          email: booking.user?.email || 'cliente@local.com',
-          name: booking.user?.name || booking.description || 'Cliente',
+          email: booking.user?.email || 'cliente@psp.local',
+          name: booking.user?.name || 'Cliente',
         },
         back_urls: {
-          success: `${process.env.NEXT_PUBLIC_APP_URL}/reservas/success`,
-          failure: `${process.env.NEXT_PUBLIC_APP_URL}/reservas/failure`,
-          pending: `${process.env.NEXT_PUBLIC_APP_URL}/reservas/pending`,
+          success: `${appUrl}/reservas/success`,
+          failure: `${appUrl}/reservas/failure`,
+          pending: `${appUrl}/reservas/pending`,
         },
         auto_return: 'approved',
         external_reference: booking.id,
+        notification_url: `${appUrl}/api/webhooks/mercadopago`,
       }
     });
 

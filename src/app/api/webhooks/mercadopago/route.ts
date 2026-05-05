@@ -4,16 +4,22 @@ import { Payment, MercadoPagoConfig } from 'mercadopago';
 import { prisma } from '@/lib/prisma';
 import { sendBookingConfirmation } from '@/lib/whatsapp/notifications';
 
-const client = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN as string,
-});
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { type, data } = body;
 
     if (type === 'payment') {
+      // Leer el token de MP desde SystemSetting (lo configura el admin desde la web)
+      const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+      const mpToken = settings?.mpAccessToken;
+
+      if (!mpToken) {
+        console.error('❌ Webhook MP: No hay mpAccessToken en SystemSetting');
+        return NextResponse.json({ success: false }, { status: 200 });
+      }
+
+      const client = new MercadoPagoConfig({ accessToken: mpToken });
       const payment = new Payment(client);
       const paymentInfo = await payment.get({ id: data.id });
 
@@ -33,7 +39,6 @@ export async function POST(request: Request) {
           console.log(`✅ Pago aprobado para booking ${bookingId} — PaymentID: ${paymentInfo.id}`);
 
           // 2. Enviar confirmación automática por WhatsApp
-          //    Funciona tanto para reservas de WhatsApp como de la PWA
           await sendBookingConfirmation(bookingId);
         }
       }
@@ -42,7 +47,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error('Error en webhook de MercadoPago:', error);
-    // Respondemos 200 para que MP no reintente infinitamente
     return NextResponse.json({ success: false }, { status: 200 });
   }
 }
