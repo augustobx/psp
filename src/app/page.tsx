@@ -46,9 +46,8 @@ export default async function HomePage() {
     // 2. SISTEMA ACTIVO: Pasamos TODO el objeto settings a los componentes
     return (
         <div className={theme}>
-            {/* Pasale settings como prop a ambos */}
-            <PublicNavbar settings={settings} />
-            <BookingFlow courts={courts} settings={settings} />
+            <PublicNavbar />
+            <BookingFlow courts={courts} sysSettings={settings} />
         </div>
     );
 }
