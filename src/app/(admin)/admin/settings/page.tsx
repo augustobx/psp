@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma"; // <-- Cambiado: Agregadas las llaves { }
 import { updateSystemSettings } from "@/actions/settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 export default async function SettingsPage() {
-    // Obtenemos la configuración actual, si no existe la creamos por defecto
     let settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
 
     if (!settings) {
@@ -96,7 +95,6 @@ export default async function SettingsPage() {
                                     <Label htmlFor="autoWhatsapp" className="text-base font-medium">Activar Notificaciones de Meta</Label>
                                     <p className="text-sm text-gray-500">Enviar confirmaciones y recordatorios por WhatsApp automáticamente.</p>
                                 </div>
-                                {/* Switch nativo simplificado */}
                                 <label className="relative inline-flex items-center cursor-pointer">
                                     <input
                                         type="checkbox"

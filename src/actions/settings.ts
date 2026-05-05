@@ -1,11 +1,21 @@
 "use server"
 
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma"; // <-- Cambiado: Agregadas las llaves { }
 import { revalidatePath } from "next/cache";
+
+// Restauramos esta función que la necesita el home (page.tsx)
+export async function getSettings() {
+    try {
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        return settings;
+    } catch (error) {
+        console.error("Error fetching settings:", error);
+        return null;
+    }
+}
 
 export async function updateSystemSettings(formData: FormData) {
     try {
-        // Obtenemos los valores de los checkboxes. Si existen en el FormData, son true.
         const autoWhatsapp = formData.get("autoWhatsapp") === "on";
         const bubbleActive = formData.get("bubbleActive") === "on";
         const pwaEnabled = formData.get("pwaEnabled") === "on";
@@ -25,12 +35,11 @@ export async function updateSystemSettings(formData: FormData) {
                 autoWhatsapp,
                 bubbleActive,
                 pwaEnabled,
-                // Eliminamos la actualización de plantillas largas de WhatsApp de aquí
             },
         });
 
         revalidatePath("/admin/settings");
-        revalidatePath("/"); // Refresca la vista pública también
+        revalidatePath("/");
 
         return { success: true, message: "Configuración guardada exitosamente" };
     } catch (error) {
