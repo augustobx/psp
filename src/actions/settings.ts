@@ -15,21 +15,25 @@ export async function getSettings() {
 
 export async function updateSystemSettings(formData: FormData) {
     try {
-        // La forma correcta y robusta de leer checkboxes en Server Actions:
-        // Si está marcado, "has" devuelve true. Si está desmarcado, devuelve false.
-        const autoWhatsapp = formData.has("autoWhatsapp");
-        const bubbleActive = formData.has("bubbleActive");
-        const pwaEnabled = formData.has("pwaEnabled");
+        // 1. Switches booleanos capturados correctamente con .has()
+        const reservationsEnabled = formData.has("reservationsEnabled"); // Activar/desactivar el sistema de reservas web
+        const whatsappReservations = formData.has("whatsappReservations"); // Activar/desactivar reserva por wsp
+        const pwaEnabled = formData.has("pwaEnabled"); // Activar/desactivar la PWA
+        const autoWhatsapp = formData.has("autoWhatsapp"); // Meta API
+        const bubbleActive = formData.has("bubbleActive"); // Activar burbuja de mensaje
 
+        // 2. Textos, números y configuraciones generales
         const clubName = formData.get("clubName") as string;
         const contactPhone = formData.get("contactPhone") as string;
         const reservationFee = Number(formData.get("reservationFee"));
         const mpAccessToken = formData.get("mpAccessToken") as string;
         const theme = formData.get("theme") as string;
 
-        // Capturamos las variables del Splash Screen
+        // 3. Splash y Burbuja
         const splashLogo = formData.get("splashLogo") as string;
+        const splashName = formData.get("splashName") as string;
         const splashDuration = Number(formData.get("splashDuration"));
+        const bubbleText = formData.get("bubbleText") as string;
 
         await prisma.systemSetting.update({
             where: { id: 1 },
@@ -38,11 +42,15 @@ export async function updateSystemSettings(formData: FormData) {
                 contactPhone,
                 reservationFee,
                 mpAccessToken,
+                theme,
+                reservationsEnabled,
+                whatsappReservations,
+                pwaEnabled,
                 autoWhatsapp,
                 bubbleActive,
-                pwaEnabled,
-                theme,
+                bubbleText,
                 splashLogo,
+                splashName,
                 splashDuration,
             },
         });
