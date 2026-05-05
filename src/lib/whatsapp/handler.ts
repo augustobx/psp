@@ -55,12 +55,15 @@ async function findOrCreateUser(phone: string, name?: string): Promise<string> {
     return user.id;
 }
 
-/** Obtiene el precio por turno desde SystemSetting */
-async function getReservationFee(): Promise<number> {
+/** Obtiene la config de reservas desde SystemSetting */
+async function getBookingSettings(): Promise<{ fee: number; requireDeposit: boolean }> {
     const settings = await prisma.systemSetting.findUnique({
         where: { id: 1 },
     });
-    return settings?.reservationFee ?? 0;
+    return {
+        fee: settings?.reservationFee ?? 0,
+        requireDeposit: settings?.requireDeposit ?? false,
+    };
 }
 
 /** Genera un link de pago de MercadoPago para un booking */
@@ -122,13 +125,32 @@ async function generatePaymentLink(bookingId: string): Promise<string | null> {
     }
 }
 
-// Limpieza periódica de sesiones viejas
+// Limpieza periódica de sesiones viejas + auto-cancel de bookings impagos
 let lastCleanup = 0;
-function maybeCleanupSessions() {
+const PENDING_BOOKING_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+async function maybeCleanupSessions() {
     const now = Date.now();
-    if (now - lastCleanup > 5 * 60 * 1000) {
+    if (now - lastCleanup > 60 * 1000) { // Chequear cada 1 min
         cleanupSessions();
         lastCleanup = now;
+
+        // Auto-cancelar bookings PENDING que pasaron los 5 minutos
+        try {
+            const cutoff = new Date(Date.now() - PENDING_BOOKING_TTL_MS);
+            const stale = await prisma.booking.updateMany({
+                where: {
+                    status: 'PENDING',
+                    createdAt: { lt: cutoff },
+                },
+                data: { status: 'CANCELLED' },
+            });
+            if (stale.count > 0) {
+                console.log(`🗑️ Auto-canceladas ${stale.count} reservas PENDING sin pagar (>5 min)`);
+            }
+        } catch (err) {
+            console.error('❌ Error auto-cancelando reservas viejas:', err);
+        }
     }
 }
 
@@ -136,7 +158,7 @@ function maybeCleanupSessions() {
 // HANDLER PRINCIPAL
 // ============================================================================
 export async function handleIncomingMessage(phone: string, message: any) {
-    maybeCleanupSessions();
+    await maybeCleanupSessions();
 
     const messageType = message.type;
     const session = getSession(phone);
@@ -473,9 +495,9 @@ async function handleListReply(phone: string, listId: string, listTitle: string)
             slotEnd,
         });
 
-        // Obtener precio
-        const fee = await getReservationFee();
-        const priceText = fee > 0 ? `\n💰 *Seña:* $${fee.toLocaleString('es-AR')}` : '';
+        // Obtener config de seña
+        const { fee, requireDeposit } = await getBookingSettings();
+        const priceText = requireDeposit && fee > 0 ? `\n💰 *Seña:* $${fee.toLocaleString('es-AR')}` : '';
 
         await sendInteractiveButtons(
             phone,
@@ -533,18 +555,18 @@ async function createBookingAndSendPaymentLink(phone: string) {
             return;
         }
 
-        // 3. Obtener precio
-        const fee = await getReservationFee();
+        // 3. Obtener config de seña
+        const { fee, requireDeposit } = await getBookingSettings();
 
-        // 4. Crear la reserva (PENDING hasta que MP confirme)
+        // 4. Crear la reserva
         const booking = await prisma.booking.create({
             data: {
                 courtId: session.courtId,
                 userId,
                 startTime,
                 endTime,
-                totalAmount: fee,
-                status: 'PENDING',
+                totalAmount: requireDeposit ? fee : 0,
+                status: requireDeposit ? 'PENDING' : 'CONFIRMED',
             },
             include: { court: true },
         });
@@ -553,8 +575,8 @@ async function createBookingAndSendPaymentLink(phone: string) {
 
         console.log(`🎾 Reserva creada vía WhatsApp: ${booking.id} | ${clientLabel} | ${session.courtName} | ${session.date} ${session.slotTime}`);
 
-        // 5. Generar link de pago si hay seña configurada
-        if (fee > 0) {
+        // 5. Flujo según si la seña está activada o no
+        if (requireDeposit && fee > 0) {
             const paymentLink = await generatePaymentLink(booking.id);
 
             if (paymentLink) {
@@ -568,10 +590,9 @@ async function createBookingAndSendPaymentLink(phone: string) {
                     `💰 *Seña:* $${fee.toLocaleString('es-AR')}\n\n` +
                     `📌 *Estado:* ⏳ Pendiente de pago\n\n` +
                     `👇 *Pagá la seña para confirmar tu turno:*\n${paymentLink}\n\n` +
-                    `⚠️ _La cancha se libera si no se paga la seña._`
+                    `⏱️ _Tenés 5 minutos para pagar, sino el turno se libera automáticamente._`
                 );
             } else {
-                // Error generando link, pero la reserva se creó
                 await sendWhatsAppMessage(
                     phone,
                     `🎾 *Reserva registrada, ${session.clientName || 'crack'}!*\n\n` +
@@ -579,16 +600,11 @@ async function createBookingAndSendPaymentLink(phone: string) {
                     `📅 *Fecha:* ${formatDate(session.date)}\n` +
                     `🕐 *Horario:* ${session.slotTime} - ${session.slotEnd}\n` +
                     `👤 *A nombre de:* ${clientLabel}\n\n` +
-                    `⚠️ Hubo un problema generando el link de pago. Contactanos para coordinar la seña.`
+                    `⚠️ Hubo un problema generando el link de pago. Contactanos para coordinar.`
                 );
             }
         } else {
-            // Sin seña → confirmar directo
-            await prisma.booking.update({
-                where: { id: booking.id },
-                data: { status: 'CONFIRMED' },
-            });
-
+            // Sin seña → ya se creó como CONFIRMED
             await sendWhatsAppMessage(
                 phone,
                 `✅ *¡Turno confirmado, ${session.clientName || 'crack'}!*\n\n` +

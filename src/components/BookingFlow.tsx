@@ -89,10 +89,10 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
         return;
       }
 
-      const { bookingId, fee } = bookingResult.data;
+      const { bookingId, fee, requireDeposit } = bookingResult.data;
 
-      // 2. Si hay seña configurada, generar link de pago y redirigir
-      if (fee > 0) {
+      // 2. Si la seña está activada, generar link de pago y redirigir
+      if (requireDeposit && fee > 0) {
         const paymentResult = await createPaymentPreference(bookingId);
 
         if (paymentResult.success && paymentResult.init_point) {
@@ -100,12 +100,12 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
           window.location.href = paymentResult.init_point;
           return;
         } else {
-          // Error generando link de pago, pero la reserva se creó
+          // Error generando link, pero la reserva se creó
           setStep(3);
           setLoading(false);
         }
       } else {
-        // Sin seña → confirmar directo
+        // Sin seña → ya quedó confirmada
         setStep(3);
         setLoading(false);
       }
@@ -297,10 +297,12 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
               </div>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-sm text-amber-800 font-medium flex items-start">
-              <CreditCard className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5 text-amber-500" />
-              <span>Al confirmar serás redirigido a <strong>MercadoPago</strong> para pagar la seña. Tu turno se confirma automáticamente una vez acreditado el pago.</span>
-            </div>
+            {sysSettings?.requireDeposit !== false && (
+              <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-sm text-amber-800 font-medium flex items-start">
+                <CreditCard className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5 text-amber-500" />
+                <span>Al confirmar serás redirigido a <strong>MercadoPago</strong> para pagar la seña. Tu turno se confirma automáticamente una vez acreditado el pago. Tenés 5 minutos para pagar.</span>
+              </div>
+            )}
           </form>
         )}
 
@@ -311,9 +313,12 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
               <CheckCircle2 className="w-12 h-12 text-emerald-500 absolute" />
               <div className="w-24 h-24 border-4 border-emerald-500 rounded-full animate-ping opacity-20"></div>
             </div>
-            <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 mb-3">¡Reserva registrada!</h3>
+            <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 mb-3">¡Reserva {sysSettings?.requireDeposit !== false ? 'registrada' : 'confirmada'}!</h3>
             <p className="text-slate-500 font-medium px-4 leading-relaxed">
-              Tu turno queda confirmado una vez acreditado el pago. Te enviamos la confirmación por WhatsApp al número ingresado. 🎾
+              {sysSettings?.requireDeposit !== false
+                ? 'Tu turno queda confirmado una vez acreditado el pago. Te enviamos la confirmación por WhatsApp. 🎾'
+                : '¡Tu lugar está asegurado! Te enviamos los detalles por WhatsApp. 🎾'
+              }
             </p>
             <button onClick={() => window.location.reload()} className="mt-8 font-bold text-slate-900 bg-slate-100 py-4 px-8 rounded-2xl hover:bg-slate-200 transition-colors">
               Volver al inicio
@@ -344,10 +349,14 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Procesando...
                 </>
-              ) : (
+              ) : sysSettings?.requireDeposit !== false ? (
                 <>
                   <CreditCard className="w-5 h-5 mr-2" />
                   Pagar Seña y Reservar
+                </>
+              ) : (
+                <>
+                  Confirmar Reserva <ArrowRight className="w-5 h-5 ml-2" />
                 </>
               )}
             </button>

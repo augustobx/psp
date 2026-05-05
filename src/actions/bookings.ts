@@ -157,19 +157,20 @@ export async function createBooking(data: {
       });
     }
 
-    // Obtener precio desde SystemSetting
+    // Obtener config desde SystemSetting
     const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
     const fee = settings?.reservationFee ?? 0;
+    const requireDeposit = settings?.requireDeposit ?? false;
 
-    // Crear la reserva (PENDING hasta que MP confirme el pago)
+    // Crear la reserva
     const booking = await prisma.booking.create({
       data: {
         courtId: data.courtId,
         userId: user.id,
         startTime,
         endTime,
-        totalAmount: fee,
-        status: 'PENDING',
+        totalAmount: requireDeposit ? fee : 0,
+        status: requireDeposit ? 'PENDING' : 'CONFIRMED',
       }
     });
 
@@ -177,7 +178,7 @@ export async function createBooking(data: {
     revalidatePath('/admin/dashboard');
     revalidatePath('/reservas');
 
-    return { success: true, data: { bookingId: booking.id, fee } };
+    return { success: true, data: { bookingId: booking.id, fee, requireDeposit } };
   } catch (error) {
     console.error('Error creating booking:', error);
     return { success: false, error: 'Ocurrió un error al procesar la reserva.' };
