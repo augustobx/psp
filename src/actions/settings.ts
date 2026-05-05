@@ -15,7 +15,6 @@ export async function getSettings() {
 
 export async function updateSystemSettings(formData: FormData) {
     try {
-        // Lectura nativa de HTML: los checkboxes marcados envían "on", los desmarcados envían null.
         const reservationsEnabled = formData.get("reservationsEnabled") === "on";
         const whatsappReservations = formData.get("whatsappReservations") === "on";
         const pwaEnabled = formData.get("pwaEnabled") === "on";
@@ -23,16 +22,16 @@ export async function updateSystemSettings(formData: FormData) {
         const bubbleActive = formData.get("bubbleActive") === "on";
         const requireDeposit = formData.get("requireDeposit") === "on";
 
-        // Textos y números con fallbacks para evitar que explote si vienen vacíos
         const clubName = (formData.get("clubName") as string) || "";
         const topbarName = (formData.get("topbarName") as string) || "";
         const contactPhone = (formData.get("contactPhone") as string) || "";
+        const courtPhone = (formData.get("courtPhone") as string) || ""; // <-- CAPTURADO
+        const apiPhone = (formData.get("apiPhone") as string) || "";     // <-- CAPTURADO
         const mpAccessToken = (formData.get("mpAccessToken") as string) || "";
         const reservationFee = Number(formData.get("reservationFee")) || 0;
         const sportEmoji = (formData.get("sportEmoji") as string) || "🎾";
         const theme = (formData.get("theme") as string) || "light";
 
-        // Splash y Burbuja
         const splashLogo = (formData.get("splashLogo") as string) || "";
         const splashName = (formData.get("splashName") as string) || "";
         const splashDuration = Number(formData.get("splashDuration")) || 3000;
@@ -43,7 +42,7 @@ export async function updateSystemSettings(formData: FormData) {
         await prisma.systemSetting.update({
             where: { id: 1 },
             data: {
-                clubName, topbarName, contactPhone, mpAccessToken, reservationFee, sportEmoji, theme,
+                clubName, topbarName, contactPhone, courtPhone, apiPhone, mpAccessToken, reservationFee, sportEmoji, theme,
                 reservationsEnabled, whatsappReservations, pwaEnabled, autoWhatsapp, requireDeposit,
                 splashLogo, splashName, splashDuration,
                 bubbleActive, bubbleText, bubbleColor, bubbleDuration

@@ -13,9 +13,10 @@ export default async function HomePage() {
     const isReservationsEnabled = settings?.reservationsEnabled ?? true;
     const isWhatsappReservations = settings?.whatsappReservations ?? true;
 
-    // 1. PANTALLA DE RESERVAS PAUSADAS
     if (!isReservationsEnabled) {
-        const phone = settings?.contactPhone?.replace(/\D/g, '') || "";
+        // NUEVA LÓGICA: Prioriza apiPhone, si está vacío usa contactPhone
+        const phoneToUse = settings?.apiPhone || settings?.contactPhone || "";
+        const phone = phoneToUse.replace(/\D/g, '');
         const waLink = `https://wa.me/${phone}?text=Hola,%20quiero%20reservar%20un%20turno.`;
 
         return (
@@ -41,7 +42,6 @@ export default async function HomePage() {
         );
     }
 
-    // 2. SISTEMA ACTIVO (Contenedor centrado para Desktop, 100% ancho en Mobile)
     return (
         <div className={`${theme} min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:items-center md:py-8`}>
             <div className="w-full max-w-md bg-white dark:bg-slate-900 min-h-screen md:min-h-0 md:rounded-[2.5rem] md:shadow-2xl md:border md:border-slate-200 dark:border-slate-800 relative overflow-hidden flex flex-col">

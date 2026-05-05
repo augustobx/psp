@@ -11,7 +11,7 @@ export default async function SettingsPage() {
     if (!settings) {
         settings = await prisma.systemSetting.create({
             data: {
-                clubName: "PSP Padel", topbarName: "PSP Padel", contactPhone: "", mpAccessToken: "", reservationFee: 0,
+                clubName: "PSP Padel", topbarName: "PSP Padel", contactPhone: "", courtPhone: "", apiPhone: "", mpAccessToken: "", reservationFee: 0,
                 sportEmoji: "🎾", theme: "light", pwaEnabled: true, autoWhatsapp: false,
                 requireDeposit: true, reservationsEnabled: true, whatsappReservations: true,
                 splashLogo: "PSP", splashName: "PSP Padel", splashDuration: 1500,
@@ -35,7 +35,7 @@ export default async function SettingsPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Información General</CardTitle>
-                                <CardDescription>Datos básicos y visuales.</CardDescription>
+                                <CardDescription>Datos básicos, visuales y teléfonos.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
@@ -48,11 +48,24 @@ export default async function SettingsPage() {
                                         <Input id="topbarName" name="topbarName" defaultValue={settings.topbarName || ''} placeholder="Ej: PSP Padel" />
                                     </div>
                                 </div>
+
+                                {/* LOS 3 TELÉFONOS */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="contactPhone">Teléfono de Contacto (WhatsApp)</Label>
-                                    <Input id="contactPhone" name="contactPhone" defaultValue={settings.contactPhone} placeholder="Ej: 5493329..." />
+                                    <Label htmlFor="contactPhone">Teléfono Público (Contacto general)</Label>
+                                    <Input id="contactPhone" name="contactPhone" defaultValue={settings.contactPhone} placeholder="Ej: 549..." />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="courtPhone">Nº Cancha (Recibe Alertas)</Label>
+                                        <Input id="courtPhone" name="courtPhone" defaultValue={settings.courtPhone || ''} placeholder="Ej: 549..." />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="apiPhone">Nº API (Botón Reservas)</Label>
+                                        <Input id="apiPhone" name="apiPhone" defaultValue={settings.apiPhone || ''} placeholder="Ej: 549..." />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                                     <div className="space-y-2">
                                         <Label htmlFor="sportEmoji">Emoji del Deporte</Label>
                                         <Input id="sportEmoji" name="sportEmoji" defaultValue={settings.sportEmoji} />

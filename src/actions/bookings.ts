@@ -115,7 +115,7 @@ export async function createBooking(data: {
     revalidatePath('/admin/dashboard');
     revalidatePath('/reservas');
 
-    // === NOTIFICACIONES WHATSAPP ===
+    // === NOTIFICACIONES WHATSAPP AL CLIENTE ===
     const { sendBookingConfirmation, sendBookingPendingPayment } = await import('@/lib/whatsapp/notifications');
 
     if (!requireDeposit) {
@@ -134,6 +134,52 @@ export async function createBooking(data: {
         }
       } catch (err) {
         console.error('Error generando preferencia de pago para WhatsApp:', err);
+      }
+    }
+
+    // === NOTIFICACIÓN AUTOMÁTICA AL ADMINISTRADOR/DUEÑO ===
+    if (settings?.courtPhone) {
+      try {
+        const courtDetails = await prisma.court.findUnique({ where: { id: data.courtId } });
+
+        // Limites de tiempo para contar los turnos de ese día exacto
+        const startOfDay = new Date(`${data.date}T00:00:00`);
+        const endOfDay = new Date(`${data.date}T23:59:59`);
+
+        // Obtenemos todas las canchas y contamos los turnos confirmados/pendientes
+        const courtsWithCounts = await prisma.court.findMany({
+          include: {
+            _count: {
+              select: {
+                bookings: {
+                  where: {
+                    startTime: { gte: startOfDay, lte: endOfDay },
+                    status: { not: 'CANCELLED' }
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { name: 'asc' }
+        });
+
+        // Construir el texto del resumen
+        let countersText = "📊 *Resumen del día:*\n";
+        courtsWithCounts.forEach(c => {
+          countersText += `• ${c.name}: ${c._count.bookings} turnos\n`;
+        });
+
+        // Armar el mensaje final
+        const adminMessage = `🚨 *NUEVA RESERVA INGRESADA*\n\n👤 *Cliente:* ${data.name}\n📱 *Teléfono:* ${data.phone}\n🎾 *Cancha:* ${courtDetails?.name || 'Cancha'}\n📅 *Día:* ${data.date}\n⏰ *Hora:* ${data.time} hs\n\n${countersText}`;
+
+        // Importamos la API de WhatsApp y disparamos el mensaje
+        const { sendMessage } = await import('@/lib/whatsapp/api');
+        sendMessage(settings.courtPhone, adminMessage).catch(err =>
+          console.error('Error enviando WhatsApp al admin:', err)
+        );
+
+      } catch (adminErr) {
+        console.error('Error procesando notificación al admin:', adminErr);
       }
     }
 

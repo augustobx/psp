@@ -226,6 +226,8 @@ model SystemSetting {
   // --- DATOS DEL CLUB Y PAGOS ---
   clubName         String   @default("Padel Club")
   contactPhone     String   @default("")
+  courtPhone       String   @default("")
+  apiPhone         String   @default("")
   mpAccessToken    String   @default("")
   reservationFee   Float    @default(0)
   sportEmoji       String   @default("🎾")
