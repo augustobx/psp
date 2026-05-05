@@ -8,7 +8,7 @@ export async function getExpenses(monthDate?: Date) {
     try {
         const targetDate = monthDate || new Date();
 
-        const expenses = await prisma.expense.findMany({
+        const dbExpenses = await prisma.expense.findMany({
             where: {
                 date: {
                     gte: startOfMonth(targetDate),
@@ -18,6 +18,14 @@ export async function getExpenses(monthDate?: Date) {
             orderBy: { date: 'desc' }
         });
 
+        // Convertimos el tipo Decimal de Prisma a número estándar de JS 
+        // para evitar errores de Typescript y de serialización al pasarlo al frontend
+        const expenses = dbExpenses.map(exp => ({
+            ...exp,
+            amount: Number(exp.amount)
+        }));
+
+        // Ahora sí sumamos tranquilamente
         const totalAmount = expenses.reduce((acc, curr) => acc + curr.amount, 0);
 
         return { success: true, data: { expenses, totalAmount } };
