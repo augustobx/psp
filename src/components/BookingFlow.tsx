@@ -211,7 +211,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
                       }`}
                   >
                     <span className="font-bold text-base">{court.name}</span>
-                    <span className="text-[11px] uppercase opacity-60 mt-1 font-bold">{court.surface || 'Piso Sintético'}</span>
+                    <span className="text-[11px] uppercase opacity-60 mt-1 font-bold">{court.surface || 'Piso Cemento'}</span>
                   </button>
                 ))}
               </div>
