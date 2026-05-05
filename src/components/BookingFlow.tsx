@@ -34,7 +34,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  const [formData, setFormData] = useState({ name: '', phone: '', email: '' });
+  //const [formData, setFormData] = useState({ name: '', phone: '', email: '' });
 
   const upcomingDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
@@ -79,7 +79,6 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
 
   const handleFinalSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!formData.name || !formData.phone || !formData.email) return;
 
     setLoading(true);
     setError('');
@@ -92,8 +91,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
         date: dateStr,
         time: selectedSlot,
         name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
+        phone: formData.phone,        //email: formData.email,
       });
 
       if (!bookingResult.success || !bookingResult.data) {
@@ -300,10 +298,6 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center"><Phone className="w-4 h-4 mr-2 text-slate-400" /> WhatsApp</label>
                 <input required type="tel" placeholder="Ej: 3329 123456" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-white rounded-2xl font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center"><Mail className="w-4 h-4 mr-2 text-slate-400" /> Email</label>
-                <input required type="email" placeholder="tu@email.com" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-white rounded-2xl font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
               </div>
             </div>
 

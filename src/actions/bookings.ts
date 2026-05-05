@@ -39,7 +39,6 @@ export async function createBooking(data: {
   time: string;      // "HH:mm"
   name: string;
   phone: string;
-  email: string;
 }) {
   try {
     const startTime = new Date(`${data.date}T${data.time}:00`);
