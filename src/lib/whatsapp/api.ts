@@ -161,3 +161,37 @@ export async function sendInteractiveList(
         return null;
     }
 }
+
+
+export const sendMessage = async (to: string, text: string) => {
+    // Asegurate de que los nombres de estas variables coincidan con los de tu .env
+    const token = process.env.WHATSAPP_TOKEN;
+    const phoneId = process.env.WHATSAPP_PHONE_ID;
+
+    if (!token || !phoneId) {
+        console.error("Faltan credenciales de Meta en el .env");
+        return false;
+    }
+
+    try {
+        const response = await fetch(`https://graph.facebook.com/v17.0/${phoneId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: to,
+                type: 'text',
+                text: { preview_url: false, body: text }
+            })
+        });
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error enviando mensaje WhatsApp:', error);
+        return false;
+    }
+};
