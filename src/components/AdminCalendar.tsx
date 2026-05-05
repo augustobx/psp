@@ -77,7 +77,7 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
                         ) : (
                             <div className="flex justify-between items-center">
                                 <div>
-                                    <div className="font-bold">{slot.booking?.user?.name || 'Cliente Local'}</div>
+                                    <div className="font-bold">{slot.booking?.user?.name || 'Cliente LocaL'}</div>
                                     <div className="text-sm text-slate-500">{slot.booking?.user?.phone}</div>
                                 </div>
                                 <div className="flex items-center gap-3">
