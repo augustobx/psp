@@ -1,35 +1,40 @@
-'use server';
+"use server"
 
-import { prisma } from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import prisma from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
-export async function getSettings() {
+export async function updateSystemSettings(formData: FormData) {
     try {
-        // Buscamos la configuración (siempre será el ID 1)
-        let settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        // Obtenemos los valores de los checkboxes. Si existen en el FormData, son true.
+        const autoWhatsapp = formData.get("autoWhatsapp") === "on";
+        const bubbleActive = formData.get("bubbleActive") === "on";
+        const pwaEnabled = formData.get("pwaEnabled") === "on";
 
-        // Si no existe, la creamos con los valores por defecto
-        if (!settings) {
-            settings = await prisma.systemSetting.create({ data: { id: 1 } });
-        }
+        const clubName = formData.get("clubName") as string;
+        const contactPhone = formData.get("contactPhone") as string;
+        const reservationFee = Number(formData.get("reservationFee"));
+        const mpAccessToken = formData.get("mpAccessToken") as string;
 
-        return { success: true, data: settings };
-    } catch (error) {
-        return { success: false, error: 'Error al cargar configuraciones' };
-    }
-}
-
-export async function updateSettings(data: any) {
-    try {
-        await prisma.systemSetting.upsert({
+        await prisma.systemSetting.update({
             where: { id: 1 },
-            update: data,
-            create: { id: 1, ...data },
+            data: {
+                clubName,
+                contactPhone,
+                reservationFee,
+                mpAccessToken,
+                autoWhatsapp,
+                bubbleActive,
+                pwaEnabled,
+                // Eliminamos la actualización de plantillas largas de WhatsApp de aquí
+            },
         });
-        revalidatePath('/'); // Recarga la PWA
-        revalidatePath('/admin/settings');
-        return { success: true };
+
+        revalidatePath("/admin/settings");
+        revalidatePath("/"); // Refresca la vista pública también
+
+        return { success: true, message: "Configuración guardada exitosamente" };
     } catch (error) {
-        return { success: false, error: 'Error al guardar configuraciones' };
+        console.error("Error updating settings:", error);
+        return { success: false, message: "Hubo un error al guardar la configuración" };
     }
 }

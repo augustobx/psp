@@ -1,185 +1,144 @@
-'use client';
+import prisma from "@/lib/prisma";
+import { updateSystemSettings } from "@/actions/settings";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
-import { useState, useEffect } from 'react';
-import { getSettings, updateSettings } from '@/actions/settings';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+export default async function SettingsPage() {
+    // Obtenemos la configuración actual, si no existe la creamos por defecto
+    let settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
 
-export default function SettingsPage() {
-    const [settings, setSettings] = useState<any>(null);
-    const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-
-    useEffect(() => {
-        getSettings().then(res => {
-            if (res.success) setSettings(res.data);
+    if (!settings) {
+        settings = await prisma.systemSetting.create({
+            data: { clubName: "PSP Padel", contactPhone: "", reservationFee: 0, mpAccessToken: "" }
         });
-    }, []);
-
-    const handleSave = async () => {
-        setLoading(true);
-        setMessage(null);
-
-        // Convertimos a número los campos que lo requieren
-        const payload = {
-            ...settings,
-            reservationFee: parseFloat(settings.reservationFee) || 0,
-            splashDuration: parseInt(settings.splashDuration) || 1500,
-            bubbleDuration: parseInt(settings.bubbleDuration) || 3000,
-        };
-
-        const result = await updateSettings(payload);
-
-        if (result.success) {
-            setMessage({ type: 'success', text: 'Todas las configuraciones se guardaron correctamente.' });
-        } else {
-            setMessage({ type: 'error', text: 'Error al guardar.' });
-        }
-        setLoading(false);
-    };
-
-    if (!settings) return <div className="p-8 font-bold text-slate-500 animate-pulse">Cargando configuraciones del club...</div>;
+    }
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8 bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-sm border border-slate-100">
-
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-black">Configuración General</h2>
-                {message && (
-                    <div className={`px-4 py-2 rounded-lg text-sm font-bold ${message.type === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                        {message.text}
-                    </div>
-                )}
+        <div className="max-w-5xl mx-auto p-6">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-gray-900">Configuración del Sistema</h1>
+                <p className="text-gray-500">Administra las preferencias generales del complejo y notificaciones.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <form action={updateSystemSettings} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                {/* BLOQUE 1: NEGOCIO Y MERCADO PAGO (Lo que ya tenías) */}
-                <div className="space-y-6 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200">
-                    <h3 className="font-black text-lg text-slate-800 flex items-center">🏢 Datos del Club y Pagos</h3>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-3">
-                            <Label>Nombre del Club</Label>
-                            <Input value={settings.clubName || ''} onChange={e => setSettings({ ...settings, clubName: e.target.value })} placeholder="Ej: San Pedro Padel" className="bg-white" />
-                        </div>
-                        <div className="space-y-3">
-                            <Label>Emoji Deporte</Label>
-                            <Input value={settings.sportEmoji || ''} onChange={e => setSettings({ ...settings, sportEmoji: e.target.value })} placeholder="🎾" className="bg-white" />
-                        </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <Label>Teléfono / WhatsApp</Label>
-                        <Input value={settings.contactPhone || ''} onChange={e => setSettings({ ...settings, contactPhone: e.target.value })} placeholder="Ej: +5493329..." className="bg-white" />
-                    </div>
-
-                    <div className="space-y-3">
-                        <Label>Access Token (Mercado Pago)</Label>
-                        <Input type="password" value={settings.mpAccessToken || ''} onChange={e => setSettings({ ...settings, mpAccessToken: e.target.value })} placeholder="APP_USR-..." className="bg-white" />
-                    </div>
-
-                    <div className="space-y-3">
-                        <Label>Monto de la Seña ($)</Label>
-                        <Input type="number" value={settings.reservationFee || ''} onChange={e => setSettings({ ...settings, reservationFee: e.target.value })} placeholder="3000" className="bg-white" />
-                    </div>
-
-                    <div className="pt-4 space-y-4 border-t border-slate-200">
-                        <div className="flex items-center space-x-3">
-                            <input type="checkbox" checked={settings.requireDeposit} onChange={e => setSettings({ ...settings, requireDeposit: e.target.checked })} className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
-                            <Label className="font-bold">Exigir pago de seña obligatorio</Label>
-                        </div>
-                        <div className="flex items-center space-x-3 opacity-90">
-                            <input type="checkbox" checked={settings.autoWhatsapp} onChange={e => setSettings({ ...settings, autoWhatsapp: e.target.checked })} className="w-5 h-5 rounded border-slate-300" />
-                            <Label>Activar Bot automático de WhatsApp</Label>
-                        </div>
-                        <div className="flex items-center space-x-3 opacity-90">
-                            <input type="checkbox" checked={settings.pwaEnabled} onChange={e => setSettings({ ...settings, pwaEnabled: e.target.checked })} className="w-5 h-5 rounded border-slate-300" />
-                            <Label>Activar PWA (Sitio Web Público)</Label>
-                        </div>
-                    </div>
-                </div>
-
-                {/* BLOQUE 3: MENSAJES DE WHATSAPP */}
-                <div className="space-y-6 bg-green-50/50 dark:bg-green-900/10 p-6 rounded-2xl border border-green-200 dark:border-green-800 md:col-span-2">
-                    <h3 className="font-black text-lg text-green-800 dark:text-green-400 flex items-center">💬 Mensajes de WhatsApp Automáticos</h3>
-                    <p className="text-sm text-slate-500">Variables disponibles: <code className="text-xs bg-slate-100 p-1 rounded">&#123;clubName&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;clientName&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;courtName&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;date&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;startTime&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;endTime&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;fee&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;paymentLink&#125;</code> <code className="text-xs bg-slate-100 p-1 rounded">&#123;sportEmoji&#125;</code></p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-3">
-                            <Label>Mensaje de Bienvenida (Bot)</Label>
-                            <textarea rows={6} className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none" value={settings.wspWelcome || ''} onChange={e => setSettings({ ...settings, wspWelcome: e.target.value })}></textarea>
-                        </div>
-                        <div className="space-y-3">
-                            <Label>Turno Pendiente de Pago</Label>
-                            <textarea rows={6} className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none" value={settings.wspPending || ''} onChange={e => setSettings({ ...settings, wspPending: e.target.value })}></textarea>
-                        </div>
-                        <div className="space-y-3">
-                            <Label>Turno Confirmado</Label>
-                            <textarea rows={6} className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none" value={settings.wspConfirmed || ''} onChange={e => setSettings({ ...settings, wspConfirmed: e.target.value })}></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                {/* BLOQUE 2: DISEÑO DE LA APP PWA */}
-                <div className="space-y-6">
-
-                    {/* Splash */}
-                    <div className="space-y-4 p-6 border border-slate-200 rounded-2xl bg-emerald-50/50">
-                        <h3 className="font-black text-emerald-700 flex items-center">🚀 Pantalla Inicial (Splash)</h3>
-                        <div className="grid grid-cols-2 gap-4">
+                    {/* BLOQUE 1: Información General */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Información General</CardTitle>
+                            <CardDescription>Datos básicos del complejo.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Texto / Logo</Label>
-                                <Input value={settings.splashLogo || ''} onChange={e => setSettings({ ...settings, splashLogo: e.target.value })} className="bg-white" />
+                                <Label htmlFor="clubName">Nombre del Complejo</Label>
+                                <Input
+                                    id="clubName"
+                                    name="clubName"
+                                    defaultValue={settings.clubName}
+                                    placeholder="Ej: PSP Padel"
+                                    required
+                                />
                             </div>
                             <div className="space-y-2">
-                                <Label>Duración (ms)</Label>
-                                <Input type="number" value={settings.splashDuration || ''} onChange={e => setSettings({ ...settings, splashDuration: e.target.value })} className="bg-white" />
+                                <Label htmlFor="contactPhone">Teléfono de Contacto</Label>
+                                <Input
+                                    id="contactPhone"
+                                    name="contactPhone"
+                                    defaultValue={settings.contactPhone}
+                                    placeholder="Ej: +54 9 3329..."
+                                />
                             </div>
-                        </div>
-                        <div className="space-y-2 pt-2">
-                            <Label>Color de la App</Label>
-                            <select className="w-full p-2.5 border border-slate-200 rounded-lg bg-white outline-none" value={settings.theme || 'light'} onChange={e => setSettings({ ...settings, theme: e.target.value })}>
-                                <option value="light">Fondo Claro ☀️</option>
-                                <option value="dark">Fondo Oscuro 🌙</option>
-                            </select>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
 
-                    {/* Globo Popup */}
-                    <div className="space-y-4 p-6 border border-slate-200 rounded-2xl bg-blue-50/50">
-                        <div className="flex justify-between items-center">
-                            <h3 className="font-black text-blue-700 flex items-center">💬 Globo Flotante</h3>
-                            <input type="checkbox" checked={settings.bubbleActive} onChange={e => setSettings({ ...settings, bubbleActive: e.target.checked })} className="w-5 h-5 rounded" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Mensaje del globo (Acepta emojis)</Label>
-                            <Input value={settings.bubbleText || ''} onChange={e => setSettings({ ...settings, bubbleText: e.target.value })} className="bg-white" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
+                    {/* BLOQUE 2: Reservas y Pagos */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Reservas y Pagos</CardTitle>
+                            <CardDescription>MercadoPago y señas.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
                             <div className="space-y-2">
-                                <Label>Color de fondo</Label>
-                                <div className="flex space-x-2">
-                                    <input type="color" value={settings.bubbleColor || '#10b981'} onChange={e => setSettings({ ...settings, bubbleColor: e.target.value })} className="w-10 h-10 rounded cursor-pointer border-0" />
-                                    <Input value={settings.bubbleColor || ''} onChange={e => setSettings({ ...settings, bubbleColor: e.target.value })} className="bg-white" />
+                                <Label htmlFor="reservationFee">Costo de la Seña ($)</Label>
+                                <Input
+                                    id="reservationFee"
+                                    name="reservationFee"
+                                    type="number"
+                                    defaultValue={settings.reservationFee}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="mpAccessToken">MercadoPago Access Token</Label>
+                                <Input
+                                    id="mpAccessToken"
+                                    name="mpAccessToken"
+                                    type="password"
+                                    defaultValue={settings.mpAccessToken}
+                                    placeholder="APP_USR-..."
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* BLOQUE 3: Integración WhatsApp (Simplificada) */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Módulo WhatsApp</CardTitle>
+                            <CardDescription>La API de Meta tomará el nombre del complejo de esta configuración.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor="autoWhatsapp" className="text-base font-medium">Activar Notificaciones de Meta</Label>
+                                    <p className="text-sm text-gray-500">Enviar confirmaciones y recordatorios por WhatsApp automáticamente.</p>
                                 </div>
+                                {/* Switch nativo simplificado */}
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        id="autoWhatsapp"
+                                        name="autoWhatsapp"
+                                        defaultChecked={settings.autoWhatsapp}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Duración (ms)</Label>
-                                <Input type="number" value={settings.bubbleDuration || ''} onChange={e => setSettings({ ...settings, bubbleDuration: e.target.value })} className="bg-white" />
+                        </CardContent>
+                    </Card>
+
+                    {/* BLOQUE 4: Funciones Adicionales (PWA / Burbuja) */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Funciones del Sistema</CardTitle>
+                            <CardDescription>Activa o desactiva módulos de la web.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center justify-between p-4 border rounded-lg">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor="pwaEnabled">Modo App (PWA)</Label>
+                                    <p className="text-sm text-gray-500">Permite instalar la web en el celular.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="pwaEnabled" name="pwaEnabled" defaultChecked={settings.pwaEnabled} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
                             </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
 
                 </div>
-            </div>
 
-            <div className="pt-6 border-t border-slate-200">
-                <Button onClick={handleSave} disabled={loading} className="w-full py-6 text-lg font-black bg-slate-900 hover:bg-slate-800 text-white rounded-2xl shadow-lg transition-all">
-                    {loading ? 'Guardando...' : 'Guardar Todas las Configuraciones'}
-                </Button>
-            </div>
+                <div className="flex justify-end pt-6">
+                    <Button type="submit" size="lg" className="w-full md:w-auto">
+                        Guardar Cambios
+                    </Button>
+                </div>
+            </form>
         </div>
     );
 }
