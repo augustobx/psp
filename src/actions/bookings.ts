@@ -56,13 +56,13 @@ export async function createBooking(data: {
 
     // Buscar o crear usuario ANTES de la transacción (no es crítico para race condition)
     let user = await prisma.user.findFirst({
-      where: { email: data.email }
+      where: { phone: data.phone } // <-- CORREGIDO: Buscamos por teléfono
     });
 
     if (!user) {
       user = await prisma.user.create({
         data: {
-          email: data.email,
+          email: `${data.phone}@cliente.psp`, // <-- CORREGIDO: Generamos un email de sistema
           name: data.name,
           phone: data.phone,
           role: 'PLAYER',
