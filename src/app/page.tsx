@@ -7,7 +7,7 @@ export default async function Home() {
     const [courtsRes, settingsRes] = await Promise.all([getPublicCourts(), getSettings()]);
 
     const courts = courtsRes.success && courtsRes.data ? courtsRes.data : [];
-    const settings = settingsRes.success && settingsRes.data ? settingsRes.data : null;
+    const settings = settingsRes || null;
 
     // Acá tomamos la decisión: si el admin eligió dark, disparamos la clase 'dark' de Tailwind
     const theme = settings?.theme || 'light';
