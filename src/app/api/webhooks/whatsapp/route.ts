@@ -2,7 +2,9 @@
 import { NextResponse } from 'next/server';
 import { handleIncomingMessage } from '@/lib/whatsapp/handler';
 
-// El GET (queda igual, para cuando Meta verifica)
+// ============================================================================
+// GET — Verificación del webhook por parte de Meta
+// ============================================================================
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const mode = searchParams.get('hub.mode');
@@ -10,40 +12,45 @@ export async function GET(request: Request) {
     const challenge = searchParams.get('hub.challenge');
 
     if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+        console.log('✅ Webhook de WhatsApp verificado correctamente');
         return new Response(challenge, { status: 200 });
     }
+
+    console.warn('⚠️ Verificación de webhook fallida — token incorrecto');
     return new Response('Error de validación', { status: 403 });
 }
 
-// El POST (acá está la posta)
+// ============================================================================
+// POST — Recepción de mensajes entrantes
+// ============================================================================
 export async function POST(request: Request) {
-    console.log("=========================================");
-    console.log("🟢 🟢 LLEGÓ UN WEBHOOK DE META 🟢 🟢");
-
     try {
         const body = await request.json();
-        console.log(JSON.stringify(body, null, 2)); // Imprimimos todo el body
-        console.log("=========================================");
 
-        if (body.object === 'whatsapp_business_account') {
-            const entry = body.entry?.[0];
-            const changes = entry?.changes?.[0];
-            const value = changes?.value;
-            const message = value?.messages?.[0];
-
-            const phone = message?.from;
-
-            if (message) {
-                console.log(`📩 Hay un mensaje de texto/interactivo del número: ${phone}`);
-                await handleIncomingMessage(phone, message);
-            } else {
-                console.log("⚠️ El webhook llegó pero no tiene ningún 'message' adentro (puede ser una confirmación de lectura o estado).");
-            }
+        // Solo procesamos eventos de whatsapp_business_account
+        if (body.object !== 'whatsapp_business_account') {
+            return NextResponse.json({ status: 'ignored' });
         }
 
+        const entry = body.entry?.[0];
+        const changes = entry?.changes?.[0];
+        const value = changes?.value;
+        const message = value?.messages?.[0];
+        const phone = message?.from;
+
+        if (message && phone) {
+            console.log(`📩 Mensaje de ${phone} | Tipo: ${message.type}`);
+
+            // Procesamos en background para responder rápido a Meta (tienen timeout de 5s)
+            // Pero en Next.js Route Handlers, el await es necesario para que se ejecute
+            await handleIncomingMessage(phone, message);
+        }
+
+        // Siempre respondemos 200 a Meta para que no reintente
         return NextResponse.json({ status: 'ok' });
     } catch (error) {
-        console.error('❌ Error grave procesando el webhook:', error);
-        return NextResponse.json({ status: 'error' }, { status: 500 });
+        console.error('❌ Error procesando webhook de WhatsApp:', error);
+        // Aún con error respondemos 200 para evitar que Meta reintente infinitamente
+        return NextResponse.json({ status: 'error' }, { status: 200 });
     }
 }
