@@ -7,7 +7,8 @@ export type SessionStep =
     | 'CHOOSING_DATE'
     | 'CHOOSING_COURT'
     | 'CHOOSING_SLOT'
-    | 'CONFIRMING';
+    | 'CONFIRMING'
+    | 'WAITING_NAME';
 
 export interface WhatsAppSession {
     step: SessionStep;
@@ -18,6 +19,7 @@ export interface WhatsAppSession {
     slotTime?: string;   // "HH:mm"
     slotEnd?: string;    // "HH:mm"
     userId?: string;
+    clientName?: string;  // Nombre ingresado por el usuario
     updatedAt: number;
 }
 

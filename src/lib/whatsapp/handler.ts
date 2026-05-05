@@ -1,8 +1,9 @@
 // src/lib/whatsapp/handler.ts
 // Handler principal del bot de WhatsApp para PSP Padel Club.
-// Implementa una máquina de estados conversacional completa para reservar canchas.
+// Flujo completo: Saludo → Fecha → Cancha → Horario → Nombre → Pago MP → Confirmación automática.
 
 import { prisma } from '@/lib/prisma';
+import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { sendWhatsAppMessage, sendInteractiveButtons, sendInteractiveList } from './api';
 import { getSession, updateSession, clearSession, cleanupSessions } from './session';
 import { getAvailableSlotsForDate } from './slots';
@@ -27,24 +28,28 @@ function getDateOffset(days: number): string {
     return `${year}-${month}-${day}`;
 }
 
-/** Busca o crea un User por número de teléfono */
-async function findOrCreateUser(phone: string): Promise<string> {
-    // Intentar buscar por teléfono exacto
+/** Busca o crea un User por número de teléfono y nombre */
+async function findOrCreateUser(phone: string, name?: string): Promise<string> {
     let user = await prisma.user.findFirst({
         where: { phone },
     });
 
     if (!user) {
-        // Crear usuario nuevo con datos mínimos
         user = await prisma.user.create({
             data: {
                 email: `wa_${phone}@whatsapp.local`,
                 phone,
-                name: `WhatsApp ${phone.slice(-4)}`,
+                name: name || `WhatsApp ${phone.slice(-4)}`,
                 role: 'PLAYER',
             },
         });
-        console.log(`👤 Nuevo usuario creado para WhatsApp: ${phone}`);
+        console.log(`👤 Nuevo usuario creado: ${user.name} (${phone})`);
+    } else if (name && user.name !== name) {
+        // Si ya existe pero cambió el nombre, actualizar
+        user = await prisma.user.update({
+            where: { id: user.id },
+            data: { name },
+        });
     }
 
     return user.id;
@@ -58,7 +63,57 @@ async function getReservationFee(): Promise<number> {
     return settings?.reservationFee ?? 0;
 }
 
-// Limpieza periódica de sesiones viejas (cada 5 min en el ciclo del proceso)
+/** Genera un link de pago de MercadoPago para un booking */
+async function generatePaymentLink(bookingId: string): Promise<string | null> {
+    try {
+        const booking = await prisma.booking.findUnique({
+            where: { id: bookingId },
+            include: { court: true, user: true },
+        });
+
+        if (!booking) return null;
+
+        const client = new MercadoPagoConfig({
+            accessToken: process.env.MP_ACCESS_TOKEN as string,
+        });
+
+        const preference = new Preference(client);
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000';
+
+        const result = await preference.create({
+            body: {
+                items: [
+                    {
+                        id: booking.id,
+                        title: `Seña - ${booking.court.name} - ${booking.startTime.toLocaleDateString('es-AR')}`,
+                        quantity: 1,
+                        unit_price: Number(booking.totalAmount),
+                        currency_id: 'ARS',
+                    },
+                ],
+                payer: {
+                    email: booking.user?.email || 'cliente@psp.local',
+                    name: booking.user?.name || 'Cliente',
+                },
+                back_urls: {
+                    success: `${appUrl}/reservas/success`,
+                    failure: `${appUrl}/reservas/failure`,
+                    pending: `${appUrl}/reservas/pending`,
+                },
+                auto_return: 'approved',
+                external_reference: booking.id,
+                notification_url: `${appUrl}/api/webhooks/mercadopago`,
+            },
+        });
+
+        return result.init_point || null;
+    } catch (error) {
+        console.error('❌ Error generando link de pago:', error);
+        return null;
+    }
+}
+
+// Limpieza periódica de sesiones viejas
 let lastCleanup = 0;
 function maybeCleanupSessions() {
     const now = Date.now();
@@ -78,18 +133,26 @@ export async function handleIncomingMessage(phone: string, message: any) {
     const session = getSession(phone);
 
     // ========================================================================
-    // 1. MENSAJES DE TEXTO — Saludo / Reset
+    // 1. MENSAJES DE TEXTO
     // ========================================================================
     if (messageType === 'text') {
-        const text = message.text.body.toLowerCase().trim();
+        const text = message.text.body.trim();
+        const textLower = text.toLowerCase();
 
+        // Si estamos esperando el nombre del cliente
+        if (session.step === 'WAITING_NAME') {
+            await handleNameInput(phone, text);
+            return;
+        }
+
+        // Saludo / Reset → Menú principal
         if (
-            text.includes('hola') ||
-            text.includes('turno') ||
-            text.includes('reserva') ||
-            text.includes('cancha') ||
-            text === 'menu' ||
-            text === 'menú'
+            textLower.includes('hola') ||
+            textLower.includes('turno') ||
+            textLower.includes('reserva') ||
+            textLower.includes('cancha') ||
+            textLower === 'menu' ||
+            textLower === 'menú'
         ) {
             clearSession(phone);
             await sendMainMenu(phone);
@@ -110,18 +173,12 @@ export async function handleIncomingMessage(phone: string, message: any) {
     if (messageType === 'interactive') {
         const interactiveType = message.interactive.type;
 
-        // --------------------------------------------------------------------
-        // A. BOTONES
-        // --------------------------------------------------------------------
         if (interactiveType === 'button_reply') {
             const buttonId = message.interactive.button_reply.id;
             await handleButtonReply(phone, buttonId);
             return;
         }
 
-        // --------------------------------------------------------------------
-        // B. LISTAS
-        // --------------------------------------------------------------------
         if (interactiveType === 'list_reply') {
             const listId = message.interactive.list_reply.id;
             const listTitle = message.interactive.list_reply.title;
@@ -143,6 +200,27 @@ async function sendMainMenu(phone: string) {
             { id: 'btn_mis_reservas', title: '📋 Mis Reservas' },
         ]
     );
+}
+
+// ============================================================================
+// MANEJO DE NOMBRE (texto libre después de la confirmación)
+// ============================================================================
+async function handleNameInput(phone: string, name: string) {
+    const session = getSession(phone);
+
+    // Validación básica del nombre
+    if (name.length < 2 || name.length > 60) {
+        await sendWhatsAppMessage(
+            phone,
+            '⚠️ Por favor, escribí tu nombre completo (ej: *Juan Pérez*)'
+        );
+        return;
+    }
+
+    updateSession(phone, { clientName: name });
+
+    // Ahora procedemos a crear la reserva y generar el link de pago
+    await createBookingAndSendPaymentLink(phone);
 }
 
 // ============================================================================
@@ -233,7 +311,7 @@ async function handleButtonReply(phone: string, buttonId: string) {
         return;
     }
 
-    // ----- CONFIRMAR RESERVA -----
+    // ----- CONFIRMAR → Pedir nombre -----
     if (buttonId === 'btn_confirmar') {
         const session = getSession(phone);
 
@@ -243,74 +321,20 @@ async function handleButtonReply(phone: string, buttonId: string) {
             return;
         }
 
-        try {
-            // 1. Buscar o crear usuario
-            const userId = await findOrCreateUser(phone);
+        // Verificar si ya conocemos al usuario
+        const existingUser = await prisma.user.findFirst({ where: { phone } });
 
-            // 2. Verificar que el slot siga disponible (race condition check)
-            const startTime = new Date(`${session.date}T${session.slotTime}:00`);
-            const endTime = new Date(`${session.date}T${session.slotEnd}:00`);
-
-            const existing = await prisma.booking.findFirst({
-                where: {
-                    courtId: session.courtId,
-                    status: { in: ['PENDING', 'CONFIRMED', 'FIXED'] },
-                    startTime: { lt: endTime },
-                    endTime: { gt: startTime },
-                },
-            });
-
-            if (existing) {
-                await sendWhatsAppMessage(
-                    phone,
-                    '😔 ¡Ups! Alguien reservó este turno justo antes que vos. Intentá con otro horario.'
-                );
-                clearSession(phone);
-                await sendMainMenu(phone);
-                return;
-            }
-
-            // 3. Obtener precio
-            const fee = await getReservationFee();
-
-            // 4. Crear la reserva
-            const booking = await prisma.booking.create({
-                data: {
-                    courtId: session.courtId,
-                    userId,
-                    startTime,
-                    endTime,
-                    totalAmount: fee,
-                    status: 'PENDING',
-                    description: `Reserva vía WhatsApp - ${phone}`,
-                },
-                include: { court: true },
-            });
-
-            // 5. Confirmar al usuario
-            const priceText = fee > 0 ? `\n💰 *Precio:* $${fee.toLocaleString('es-AR')}` : '';
-
+        if (existingUser && existingUser.name && !existingUser.name.startsWith('WhatsApp')) {
+            // Ya lo conocemos, usar su nombre directamente
+            updateSession(phone, { clientName: existingUser.name });
+            await createBookingAndSendPaymentLink(phone);
+        } else {
+            // No lo conocemos → pedir nombre
+            updateSession(phone, { step: 'WAITING_NAME' });
             await sendWhatsAppMessage(
                 phone,
-                `✅ *¡Turno reservado con éxito!*\n\n` +
-                `📍 *Cancha:* ${booking.court.name}\n` +
-                `📅 *Fecha:* ${formatDate(session.date)}\n` +
-                `🕐 *Horario:* ${session.slotTime} - ${session.slotEnd}` +
-                priceText +
-                `\n📌 *Estado:* Pendiente de confirmación\n\n` +
-                `¡Te esperamos! 🎾`
+                '📝 Para completar la reserva, *escribí tu nombre y apellido*:\n\n_(Ej: Juan Pérez)_'
             );
-
-            console.log(`🎾 Nueva reserva vía WhatsApp: ${booking.id} | ${phone} | ${session.courtName} | ${session.date} ${session.slotTime}`);
-
-            clearSession(phone);
-        } catch (error) {
-            console.error('❌ Error creando reserva:', error);
-            await sendWhatsAppMessage(
-                phone,
-                'Uy, hubo un problema al confirmar tu reserva. Intentá de nuevo. 🛠️'
-            );
-            clearSession(phone);
         }
 
         return;
@@ -442,7 +466,7 @@ async function handleListReply(phone: string, listId: string, listTitle: string)
 
         // Obtener precio
         const fee = await getReservationFee();
-        const priceText = fee > 0 ? `\n💰 *Precio:* $${fee.toLocaleString('es-AR')}` : '';
+        const priceText = fee > 0 ? `\n💰 *Seña:* $${fee.toLocaleString('es-AR')}` : '';
 
         await sendInteractiveButtons(
             phone,
@@ -462,11 +486,128 @@ async function handleListReply(phone: string, listId: string, listTitle: string)
 }
 
 // ============================================================================
+// CREAR BOOKING + GENERAR LINK DE PAGO MP
+// ============================================================================
+async function createBookingAndSendPaymentLink(phone: string) {
+    const session = getSession(phone);
+
+    if (!session.courtId || !session.date || !session.slotTime || !session.slotEnd) {
+        await sendWhatsAppMessage(phone, 'La sesión expiró. Escribí *"hola"* para empezar de nuevo. ⏰');
+        clearSession(phone);
+        return;
+    }
+
+    try {
+        // 1. Buscar o crear usuario con nombre
+        const userId = await findOrCreateUser(phone, session.clientName);
+
+        // 2. Double-check de disponibilidad
+        const startTime = new Date(`${session.date}T${session.slotTime}:00`);
+        const endTime = new Date(`${session.date}T${session.slotEnd}:00`);
+
+        const existing = await prisma.booking.findFirst({
+            where: {
+                courtId: session.courtId,
+                status: { in: ['PENDING', 'CONFIRMED', 'FIXED'] },
+                startTime: { lt: endTime },
+                endTime: { gt: startTime },
+            },
+        });
+
+        if (existing) {
+            await sendWhatsAppMessage(
+                phone,
+                '😔 ¡Ups! Alguien reservó este turno justo antes que vos. Intentá con otro horario.'
+            );
+            clearSession(phone);
+            await sendMainMenu(phone);
+            return;
+        }
+
+        // 3. Obtener precio
+        const fee = await getReservationFee();
+
+        // 4. Crear la reserva (PENDING hasta que MP confirme)
+        const booking = await prisma.booking.create({
+            data: {
+                courtId: session.courtId,
+                userId,
+                startTime,
+                endTime,
+                totalAmount: fee,
+                status: 'PENDING',
+            },
+            include: { court: true },
+        });
+
+        const clientLabel = session.clientName || phone;
+
+        console.log(`🎾 Reserva creada vía WhatsApp: ${booking.id} | ${clientLabel} | ${session.courtName} | ${session.date} ${session.slotTime}`);
+
+        // 5. Generar link de pago si hay seña configurada
+        if (fee > 0) {
+            const paymentLink = await generatePaymentLink(booking.id);
+
+            if (paymentLink) {
+                await sendWhatsAppMessage(
+                    phone,
+                    `🎾 *¡Reserva registrada, ${session.clientName || 'crack'}!*\n\n` +
+                    `📍 *Cancha:* ${booking.court.name}\n` +
+                    `📅 *Fecha:* ${formatDate(session.date)}\n` +
+                    `🕐 *Horario:* ${session.slotTime} - ${session.slotEnd}\n` +
+                    `👤 *A nombre de:* ${clientLabel}\n` +
+                    `💰 *Seña:* $${fee.toLocaleString('es-AR')}\n\n` +
+                    `📌 *Estado:* ⏳ Pendiente de pago\n\n` +
+                    `👇 *Pagá la seña para confirmar tu turno:*\n${paymentLink}\n\n` +
+                    `⚠️ _La cancha se libera si no se paga la seña._`
+                );
+            } else {
+                // Error generando link, pero la reserva se creó
+                await sendWhatsAppMessage(
+                    phone,
+                    `🎾 *Reserva registrada, ${session.clientName || 'crack'}!*\n\n` +
+                    `📍 *Cancha:* ${booking.court.name}\n` +
+                    `📅 *Fecha:* ${formatDate(session.date)}\n` +
+                    `🕐 *Horario:* ${session.slotTime} - ${session.slotEnd}\n` +
+                    `👤 *A nombre de:* ${clientLabel}\n\n` +
+                    `⚠️ Hubo un problema generando el link de pago. Contactanos para coordinar la seña.`
+                );
+            }
+        } else {
+            // Sin seña → confirmar directo
+            await prisma.booking.update({
+                where: { id: booking.id },
+                data: { status: 'CONFIRMED' },
+            });
+
+            await sendWhatsAppMessage(
+                phone,
+                `✅ *¡Turno confirmado, ${session.clientName || 'crack'}!*\n\n` +
+                `📍 *Cancha:* ${booking.court.name}\n` +
+                `📅 *Fecha:* ${formatDate(session.date)}\n` +
+                `🕐 *Horario:* ${session.slotTime} - ${session.slotEnd}\n` +
+                `👤 *A nombre de:* ${clientLabel}\n` +
+                `📌 *Estado:* ✅ Confirmado\n\n` +
+                `¡Te esperamos en PSP Padel Club! 🎾💪`
+            );
+        }
+
+        clearSession(phone);
+    } catch (error) {
+        console.error('❌ Error creando reserva:', error);
+        await sendWhatsAppMessage(
+            phone,
+            'Uy, hubo un problema al procesar tu reserva. Intentá de nuevo. 🛠️'
+        );
+        clearSession(phone);
+    }
+}
+
+// ============================================================================
 // MIS RESERVAS
 // ============================================================================
 async function handleMisReservas(phone: string) {
     try {
-        // Buscar usuario por teléfono
         const user = await prisma.user.findFirst({
             where: { phone },
         });
@@ -479,7 +620,6 @@ async function handleMisReservas(phone: string) {
             return;
         }
 
-        // Buscar reservas futuras
         const now = new Date();
         const bookings = await prisma.booking.findMany({
             where: {
@@ -500,7 +640,7 @@ async function handleMisReservas(phone: string) {
             return;
         }
 
-        let msg = '📋 *Tus próximas reservas:*\n\n';
+        let msg = `📋 *Tus próximas reservas, ${user.name || 'crack'}:*\n\n`;
 
         bookings.forEach((b, i) => {
             const fecha = b.startTime.toLocaleDateString('es-AR', {
@@ -519,9 +659,11 @@ async function handleMisReservas(phone: string) {
                 hour12: false,
             });
             const statusEmoji = b.status === 'CONFIRMED' ? '✅' : '⏳';
+            const statusText = b.status === 'CONFIRMED' ? 'Confirmado' : 'Pendiente de pago';
 
             msg += `${i + 1}. ${statusEmoji} *${b.court.name}*\n`;
-            msg += `   📅 ${fecha} | 🕐 ${horaInicio} - ${horaFin}\n\n`;
+            msg += `   📅 ${fecha} | 🕐 ${horaInicio} - ${horaFin}\n`;
+            msg += `   📌 ${statusText}\n\n`;
         });
 
         await sendWhatsAppMessage(phone, msg);

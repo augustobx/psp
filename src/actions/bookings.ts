@@ -95,14 +95,19 @@ export async function getAvailableSlots(courtId: string, dateStr: string) {
   }
 }
 
-// 3. Crear una nueva reserva (Para el Frontend Público y Admin)
-export async function createBooking(data: any) {
+// 3. Crear una nueva reserva (Para el Frontend Público — PWA)
+export async function createBooking(data: {
+  courtId: string;
+  date: string;      // "YYYY-MM-DD"
+  time: string;      // "HH:mm"
+  name: string;
+  phone: string;
+  email: string;
+}) {
   try {
-    // Convertir string date y time a un objeto Date real
     const startTime = new Date(`${data.date}T${data.time}:00`);
-
-    // Obtener la duración del turno para esa cancha y ese día
     const dayOfWeek = startTime.getDay();
+
     const businessHour = await prisma.businessHour.findFirst({
       where: { courtId: data.courtId, dayOfWeek }
     });
@@ -113,12 +118,13 @@ export async function createBooking(data: any) {
 
     const endTime = new Date(startTime.getTime() + businessHour.slotDuration * 60000);
 
-    // Doble check de seguridad por si dos personas tocan "Reservar" al mismo tiempo
+    // Double check de disponibilidad (overlap detection)
     const existing = await prisma.booking.findFirst({
       where: {
         courtId: data.courtId,
-        startTime: startTime,
-        status: { not: 'CANCELLED' }
+        status: { in: ['PENDING', 'CONFIRMED', 'FIXED'] },
+        startTime: { lt: endTime },
+        endTime: { gt: startTime },
       }
     });
 
@@ -126,24 +132,52 @@ export async function createBooking(data: any) {
       return { success: false, error: 'Lo sentimos, este turno acaba de ser reservado.' };
     }
 
-    // Crear la reserva
+    // Buscar o crear usuario
+    let user = await prisma.user.findFirst({
+      where: { email: data.email }
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: data.email,
+          name: data.name,
+          phone: data.phone,
+          role: 'PLAYER',
+        }
+      });
+    } else {
+      // Actualizar datos si cambiaron
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: data.name,
+          phone: data.phone,
+        }
+      });
+    }
+
+    // Obtener precio desde SystemSetting
+    const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+    const fee = settings?.reservationFee ?? 0;
+
+    // Crear la reserva (PENDING hasta que MP confirme el pago)
     const booking = await prisma.booking.create({
       data: {
         courtId: data.courtId,
-        userId: data.userId || null, // Si tenés auth acá va el ID del user
+        userId: user.id,
         startTime,
         endTime,
-        totalAmount: data.totalAmount || 0,
-        status: 'PENDING' // Arranca pendiente hasta que pague o confirmes
+        totalAmount: fee,
+        status: 'PENDING',
       }
     });
 
-    // Limpiar caché de las páginas afectadas
     revalidatePath('/admin/calendar');
     revalidatePath('/admin/dashboard');
     revalidatePath('/reservas');
 
-    return { success: true, data: booking };
+    return { success: true, data: { bookingId: booking.id, fee } };
   } catch (error) {
     console.error('Error creating booking:', error);
     return { success: false, error: 'Ocurrió un error al procesar la reserva.' };

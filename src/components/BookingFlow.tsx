@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, MapPin, Clock, ArrowRight, CheckCircle2, User, Phone, Mail, Lock } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, Clock, ArrowRight, CheckCircle2, User, Phone, Mail, Lock, Loader2, CreditCard } from 'lucide-react';
 import { getAvailableSlots } from '@/actions/public-bookings';
+import { createBooking } from '@/actions/bookings';
+import { createPaymentPreference } from '@/actions/payments';
 
 interface SlotData {
   time: string;
@@ -20,6 +22,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
   const [slots, setSlots] = useState<SlotData[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
 
   const [formData, setFormData] = useState({ name: '', phone: '', email: '' });
 
@@ -58,13 +61,59 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
     if (step === 1 && selectedCourt && selectedSlot) setStep(2);
   };
 
-  const handleFinalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFinalSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!formData.name || !formData.phone || !formData.email) return;
+
     setLoading(true);
-    setTimeout(() => {
-      setStep(3);
+    setError('');
+
+    try {
+      // Construir la fecha en formato YYYY-MM-DD
+      const dateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000)
+        .toISOString().split('T')[0];
+
+      // 1. Crear la reserva en la DB
+      const bookingResult = await createBooking({
+        courtId: selectedCourt,
+        date: dateStr,
+        time: selectedSlot,
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+      });
+
+      if (!bookingResult.success || !bookingResult.data) {
+        setError(bookingResult.error || 'Error al crear la reserva');
+        setLoading(false);
+        return;
+      }
+
+      const { bookingId, fee } = bookingResult.data;
+
+      // 2. Si hay seña configurada, generar link de pago y redirigir
+      if (fee > 0) {
+        const paymentResult = await createPaymentPreference(bookingId);
+
+        if (paymentResult.success && paymentResult.init_point) {
+          // Redirigir a MercadoPago
+          window.location.href = paymentResult.init_point;
+          return;
+        } else {
+          // Error generando link de pago, pero la reserva se creó
+          setStep(3);
+          setLoading(false);
+        }
+      } else {
+        // Sin seña → confirmar directo
+        setStep(3);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Error en el flujo de reserva:', err);
+      setError('Ocurrió un error inesperado. Intentá de nuevo.');
       setLoading(false);
-    }, 1500);
+    }
   };
 
   // --- PANTALLA SPLASH DE INICIO (Nivel App Nativa) ---
@@ -97,8 +146,6 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
       </div>
 
       <div className="p-5 flex-1 overflow-y-auto pb-28 space-y-8 -mt-2">
-        {/* ACÁ ABAJO SIGUE EL RESTO DE TU CÓDIGO (El Paso 1 con los botones verdes, etc.) */}
-
 
         {/* PASO 1 */}
         {step === 1 && (
@@ -216,8 +263,6 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
           </div>
         )}
 
-        {/* PASO 2 Y 3 QUEDAN IGUAL - LO OMITO EN ESTE SNIPPET PARA NO HACERLO LARGO, DEJÁ EL CÓDIGO DE LOS PASOS 2 Y 3 QUE YA TENÍAS */}
-
         {/* --- PASO 2: DATOS DEL CLIENTE --- */}
         {step === 2 && (
           <form onSubmit={handleFinalSubmit} className="space-y-6 animate-in slide-in-from-right-8 duration-500 pt-4">
@@ -230,6 +275,12 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
               </div>
               <button type="button" onClick={() => setStep(1)} className="text-xs font-bold bg-white/20 px-3 py-1.5 rounded-full hover:bg-white/30 transition-colors">Modificar</button>
             </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-sm font-medium">
+                ⚠️ {error}
+              </div>
+            )}
 
             <div className="space-y-4">
               <div className="space-y-1.5">
@@ -245,19 +296,24 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
                 <input required type="email" placeholder="tu@email.com" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
               </div>
             </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-sm text-amber-800 font-medium flex items-start">
+              <CreditCard className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5 text-amber-500" />
+              <span>Al confirmar serás redirigido a <strong>MercadoPago</strong> para pagar la seña. Tu turno se confirma automáticamente una vez acreditado el pago.</span>
+            </div>
           </form>
         )}
 
-        {/* --- PASO 3: ÉXITO --- */}
+        {/* --- PASO 3: ESPERANDO PAGO / ÉXITO --- */}
         {step === 3 && (
           <div className="flex flex-col items-center justify-center text-center py-12 animate-in zoom-in-95 duration-500">
             <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-inner relative">
               <CheckCircle2 className="w-12 h-12 text-emerald-500 absolute" />
               <div className="w-24 h-24 border-4 border-emerald-500 rounded-full animate-ping opacity-20"></div>
             </div>
-            <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 mb-3">¡Confirmado!</h3>
+            <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 mb-3">¡Reserva registrada!</h3>
             <p className="text-slate-500 font-medium px-4 leading-relaxed">
-              Tu lugar está asegurado. Te enviamos los detalles por WhatsApp. ¡A romperla! 🎾
+              Tu turno queda confirmado una vez acreditado el pago. Te enviamos la confirmación por WhatsApp al número ingresado. 🎾
             </p>
             <button onClick={() => window.location.reload()} className="mt-8 font-bold text-slate-900 bg-slate-100 py-4 px-8 rounded-2xl hover:bg-slate-200 transition-colors">
               Volver al inicio
@@ -280,10 +336,20 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
           ) : (
             <button
               onClick={handleFinalSubmit}
-              disabled={loading}
-              className="w-full flex items-center justify-center bg-slate-900 text-white font-bold text-lg py-4 rounded-2xl shadow-xl transition-all hover:bg-black active:scale-[0.98]"
+              disabled={loading || !formData.name || !formData.phone || !formData.email}
+              className="w-full flex items-center justify-center bg-slate-900 text-white font-bold text-lg py-4 rounded-2xl shadow-xl transition-all hover:bg-black active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Procesando...' : 'Pagar Seña y Reservar'}
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="w-5 h-5 mr-2" />
+                  Pagar Seña y Reservar
+                </>
+              )}
             </button>
           )}
         </div>
