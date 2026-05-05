@@ -25,6 +25,7 @@ export async function updateSystemSettings(formData: FormData) {
 
         // Textos y números con fallbacks para evitar que explote si vienen vacíos
         const clubName = (formData.get("clubName") as string) || "";
+        const topbarName = (formData.get("topbarName") as string) || "";
         const contactPhone = (formData.get("contactPhone") as string) || "";
         const mpAccessToken = (formData.get("mpAccessToken") as string) || "";
         const reservationFee = Number(formData.get("reservationFee")) || 0;
@@ -42,7 +43,7 @@ export async function updateSystemSettings(formData: FormData) {
         await prisma.systemSetting.update({
             where: { id: 1 },
             data: {
-                clubName, contactPhone, mpAccessToken, reservationFee, sportEmoji, theme,
+                clubName, topbarName, contactPhone, mpAccessToken, reservationFee, sportEmoji, theme,
                 reservationsEnabled, whatsappReservations, pwaEnabled, autoWhatsapp, requireDeposit,
                 splashLogo, splashName, splashDuration,
                 bubbleActive, bubbleText, bubbleColor, bubbleDuration

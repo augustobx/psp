@@ -39,9 +39,20 @@ export default async function SettingsPage() {
                                 <CardDescription>Datos básicos y visuales.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="clubName">Nombre del Complejo</Label>
+                                        <Input id="clubName" name="clubName" defaultValue={settings.clubName} required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        {/* NUEVO CAMPO: TOPBAR */}
+                                        <Label htmlFor="topbarName">Nombre en la Topbar</Label>
+                                        <Input id="topbarName" name="topbarName" defaultValue={settings.topbarName || ''} placeholder="Ej: PSP Padel" />
+                                    </div>
+                                </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="clubName">Nombre del Complejo</Label>
-                                    <Input id="clubName" name="clubName" defaultValue={settings.clubName} required />
+                                    <Label htmlFor="contactPhone">Teléfono de Contacto (WhatsApp)</Label>
+                                    <Input id="contactPhone" name="contactPhone" defaultValue={settings.contactPhone} placeholder="Ej: 5493329..." />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="contactPhone">Teléfono de Contacto (WhatsApp)</Label>

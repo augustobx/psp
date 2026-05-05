@@ -229,6 +229,7 @@ model SystemSetting {
   mpAccessToken    String   @default("")
   reservationFee   Float    @default(0)
   sportEmoji       String   @default("🎾")
+  topbarName       String   @default("PSP Padel")
   
   // --- FEATURE TOGGLES ---
   pwaEnabled       Boolean  @default(true)
