@@ -2,7 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import { addMinutes, format, parse, startOfDay, endOfDay } from 'date-fns';
+import { addMinutes, format, parse, startOfDay, endOfDay, addWeeks } from 'date-fns';
 
 export async function getAdminCalendarData(courtId: string, dateStr: string) {
     try {
@@ -63,27 +63,27 @@ export async function getAdminCalendarData(courtId: string, dateStr: string) {
     }
 }
 
-// Crear reserva administrativa
+// Crear reserva administrativa (Simple, Bloqueo o Fijo)
 export async function createAdminBooking(data: {
     courtId: string;
     dateStr: string;
     startTimeStr: string;
     endTimeStr: string;
-    type: 'RESERVA' | 'BLOQUEO';
+    type: 'RESERVA' | 'BLOQUEO' | 'FIJO';
     clientName?: string;
     clientPhone?: string;
 }) {
     try {
-        const startTime = new Date(`${data.dateStr}T${data.startTimeStr}:00`);
-        const endTime = new Date(`${data.dateStr}T${data.endTimeStr}:00`);
-        const status = data.type === 'BLOQUEO' ? 'BLOCKED' : 'CONFIRMED';
+        const baseStartTime = new Date(`${data.dateStr}T${data.startTimeStr}:00`);
+        const baseEndTime = new Date(`${data.dateStr}T${data.endTimeStr}:00`);
+        const status = data.type === 'BLOQUEO' ? 'BLOCKED' : data.type === 'FIJO' ? 'FIXED' : 'CONFIRMED';
 
         // Creamos un usuario dummy local para asociar la reserva
         let user = await prisma.user.findFirst({ where: { phone: data.clientPhone || 'ADMIN_LOCAL' } });
         if (!user) {
             user = await prisma.user.create({
                 data: {
-                    name: data.clientName || (data.type === 'BLOQUEO' ? 'Cancha Bloqueada' : 'Cliente Local'),
+                    name: data.clientName || (data.type === 'BLOQUEO' ? 'Cancha Bloqueada' : 'Turno Local'),
                     phone: data.clientPhone || 'ADMIN_LOCAL',
                     email: `${Date.now()}@local.psp`,
                     role: 'PLAYER'
@@ -96,28 +96,42 @@ export async function createAdminBooking(data: {
             });
         }
 
-        // Transacción para evitar solapamientos
-        await prisma.$transaction(async (tx) => {
-            const existing = await tx.booking.findFirst({
-                where: {
-                    courtId: data.courtId,
-                    status: { in: ['PENDING', 'CONFIRMED', 'FIXED', 'BLOCKED'] },
-                    startTime: { lt: endTime },
-                    endTime: { gt: startTime },
-                }
-            });
-            if (existing) throw new Error('SLOT_TAKEN');
+        // Si es FIJO, generamos por 6 meses (24 semanas). Si es normal, solo 1 semana.
+        const weeksToGenerate = data.type === 'FIJO' ? 24 : 1;
 
-            await tx.booking.create({
-                data: {
-                    courtId: data.courtId,
-                    userId: user!.id,
-                    startTime,
-                    endTime,
-                    status: status as any,
-                    totalAmount: 0, // Como es administrativa, la cobranza se maneja en mostrador
+        // Transacción para insertar las reservas
+        await prisma.$transaction(async (tx) => {
+            for (let i = 0; i < weeksToGenerate; i++) {
+                const startTime = addWeeks(baseStartTime, i);
+                const endTime = addWeeks(baseEndTime, i);
+
+                const existing = await tx.booking.findFirst({
+                    where: {
+                        courtId: data.courtId,
+                        status: { in: ['PENDING', 'CONFIRMED', 'FIXED', 'BLOCKED'] },
+                        startTime: { lt: endTime },
+                        endTime: { gt: startTime },
+                    }
+                });
+
+                // Si está libre, lo creamos
+                if (!existing) {
+                    await tx.booking.create({
+                        data: {
+                            courtId: data.courtId,
+                            userId: user!.id,
+                            startTime,
+                            endTime,
+                            status: status as any,
+                            totalAmount: 0,
+                        }
+                    });
+                } else if (data.type !== 'FIJO') {
+                    // Si es una reserva simple/bloqueo y está ocupado, tira error
+                    throw new Error('SLOT_TAKEN');
                 }
-            });
+                // (Si es FIJO y está ocupado, simplemente ignora esa semana puntual y sigue con las demás)
+            }
         });
 
         revalidatePath('/admin/calendar');

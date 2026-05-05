@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, User, Phone, Info, Trash2, X, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, User, Phone, Trash2, X, Lock, Repeat } from 'lucide-react';
 import { getAdminCalendarData, createAdminBooking, cancelAdminBooking } from '@/actions/admin-calendar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,17 +11,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export default function AdminCalendar({ courts }: { courts: any[] }) {
-    // ESTADOS PRINCIPALES
     const [selectedCourt, setSelectedCourt] = useState('ALL');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [gridData, setGridData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // ESTADOS DEL MODAL DE RESERVA MANUAL
     const [modalOpen, setModalOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [slotData, setSlotData] = useState<{ courtId: string, courtName: string, time: string, endTime: string } | null>(null);
-    const [formData, setFormData] = useState({ clientName: '', clientPhone: '', type: 'RESERVA' as 'RESERVA' | 'BLOQUEO' });
+    const [formData, setFormData] = useState({ clientName: '', clientPhone: '', type: 'RESERVA' as 'RESERVA' | 'BLOQUEO' | 'FIJO' });
 
     const loadData = async () => {
         setLoading(true);
@@ -39,7 +37,7 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
     };
 
     const handleCancel = async (id: string) => {
-        if (confirm('¿Estás seguro de cancelar este turno? Esta acción no se puede deshacer.')) {
+        if (confirm('¿Estás seguro de cancelar este turno? Si es un turno fijo, solo se cancelará el de este día puntual.')) {
             const res = await cancelAdminBooking(id);
             if (res.success) loadData();
         }
@@ -62,8 +60,8 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
             startTimeStr: slotData.time,
             endTimeStr: slotData.endTime,
             type: formData.type,
-            clientName: formData.type === 'RESERVA' ? formData.clientName : undefined,
-            clientPhone: formData.type === 'RESERVA' ? formData.clientPhone : undefined,
+            clientName: (formData.type === 'RESERVA' || formData.type === 'FIJO') ? formData.clientName : undefined,
+            clientPhone: (formData.type === 'RESERVA' || formData.type === 'FIJO') ? formData.clientPhone : undefined,
         });
 
         if (res.success) {
@@ -105,7 +103,7 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
                 </div>
             </div>
 
-            {/* GRILLA DE CANCHAS (Responsiva: 1 col en mobile, X cols en PC) */}
+            {/* GRILLA DE CANCHAS */}
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-32 space-y-4">
                     <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
@@ -150,8 +148,9 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
                                                         </span>
                                                     ) : (
                                                         <div className="flex flex-col">
-                                                            <div className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                                                            <div className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
                                                                 {slot.booking?.user?.name || (slot.status === 'BLOCKED' ? 'Bloqueo Interno' : 'Cliente Local')}
+                                                                {slot.status === 'FIXED' && <Badge variant="secondary" className="text-[9px] bg-blue-100 text-blue-700 hover:bg-blue-200 px-1 py-0 shadow-none">Fijo</Badge>}
                                                             </div>
                                                             <div className="text-xs text-slate-500 font-medium">{slot.booking?.user?.phone}</div>
                                                         </div>
@@ -184,7 +183,7 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
                 </div>
             )}
 
-            {/* MODAL DE RESERVA MANUAL (Ventana Flotante) */}
+            {/* MODAL DE RESERVA MANUAL Y FIJA */}
             {modalOpen && slotData && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
@@ -202,31 +201,53 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
                         <form onSubmit={handleManualSubmit} className="p-5 space-y-5">
                             <div className="space-y-3">
                                 <Label>Tipo de Gestión</Label>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-3 gap-2">
                                     <button
                                         type="button"
                                         onClick={() => setFormData({ ...formData, type: 'RESERVA' })}
-                                        className={`p-3 rounded-xl font-bold border-2 transition-all ${formData.type === 'RESERVA' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}
+                                        className={`p-3 rounded-xl font-bold border-2 transition-all flex flex-col items-center text-xs ${formData.type === 'RESERVA' ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30' : 'border-slate-200 text-slate-500 dark:border-slate-700'}`}
                                     >
-                                        <User className="w-5 h-5 mx-auto mb-1" />
+                                        <User className="w-5 h-5 mb-1" />
                                         Cliente
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setFormData({ ...formData, type: 'BLOQUEO' })}
-                                        className={`p-3 rounded-xl font-bold border-2 transition-all ${formData.type === 'BLOQUEO' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-slate-200 text-slate-500'}`}
+                                        onClick={() => setFormData({ ...formData, type: 'FIJO' })}
+                                        className={`p-3 rounded-xl font-bold border-2 transition-all flex flex-col items-center text-xs ${formData.type === 'FIJO' ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30' : 'border-slate-200 text-slate-500 dark:border-slate-700'}`}
                                     >
-                                        <Lock className="w-5 h-5 mx-auto mb-1" />
-                                        Bloquear
+                                        <Repeat className="w-5 h-5 mb-1" />
+                                        Fijo
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, type: 'BLOQUEO' })}
+                                        className={`p-3 rounded-xl font-bold border-2 transition-all flex flex-col items-center text-xs ${formData.type === 'BLOQUEO' ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-900/30' : 'border-slate-200 text-slate-500 dark:border-slate-700'}`}
+                                    >
+                                        <Lock className="w-5 h-5 mb-1" />
+                                        Bloqueo
                                     </button>
                                 </div>
                             </div>
 
-                            {formData.type === 'RESERVA' && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                            {/* MENSAJES CONDICIONALES */}
+                            {formData.type === 'FIJO' && (
+                                <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-4 rounded-xl text-sm font-medium animate-in fade-in space-y-2">
+                                    <p>Se reservará <strong>todos los {format(currentDate, "EEEE", { locale: es })}</strong> por los próximos <strong>6 meses</strong>.</p>
+                                    <p className="text-xs opacity-80">Si alguna semana ya tiene reserva, el sistema saltará ese día automáticamente.</p>
+                                </div>
+                            )}
+
+                            {formData.type === 'BLOQUEO' && (
+                                <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 p-4 rounded-xl text-sm font-medium animate-in fade-in">
+                                    Bloquea este turno solo por este día. Ideal para mantenimiento o clases particulares.
+                                </div>
+                            )}
+
+                            {(formData.type === 'RESERVA' || formData.type === 'FIJO') && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 mt-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="clientName">Nombre del Cliente</Label>
-                                        <Input id="clientName" required placeholder="Ej: Juan Pérez" value={formData.clientName} onChange={e => setFormData({ ...formData, clientName: e.target.value })} />
+                                        <Label htmlFor="clientName">Nombre / Equipo</Label>
+                                        <Input id="clientName" required placeholder="Ej: Juan Pérez / Los Pibes" value={formData.clientName} onChange={e => setFormData({ ...formData, clientName: e.target.value })} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="clientPhone">WhatsApp (Opcional)</Label>
@@ -235,13 +256,7 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
                                 </div>
                             )}
 
-                            {formData.type === 'BLOQUEO' && (
-                                <div className="bg-amber-50 text-amber-800 p-4 rounded-xl text-sm font-medium animate-in fade-in">
-                                    Esta acción bloqueará el turno para que no pueda ser reservado por la web. Ideal para mantenimiento o clases.
-                                </div>
-                            )}
-
-                            <Button type="submit" disabled={submitting} className="w-full h-12 text-lg font-bold bg-slate-900 text-white rounded-xl shadow-lg hover:bg-slate-800">
+                            <Button type="submit" disabled={submitting} className="w-full h-12 text-lg font-bold bg-slate-900 hover:bg-slate-800 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white rounded-xl shadow-lg mt-4 transition-all">
                                 {submitting ? 'Guardando...' : 'Confirmar'}
                             </Button>
                         </form>
