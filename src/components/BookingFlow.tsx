@@ -16,13 +16,15 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
 
   // VARIABLES DINÁMICAS DESDE LA BASE DE DATOS
   const splashDuration = sysSettings?.splashDuration || 1500;
+  const bubbleDuration = sysSettings?.bubbleDuration || 3000;
   const splashLogo = sysSettings?.splashLogo || "";
   const splashName = sysSettings?.splashName || "Sistema PSP";
   const clubName = sysSettings?.clubName || "Padel Club";
   const sportEmoji = sysSettings?.sportEmoji || "🎾";
 
-  // ESTADO DEL SPLASH SCREEN
+  // ESTADOS
   const [showSplash, setShowSplash] = useState(true);
+  const [showBubble, setShowBubble] = useState(sysSettings?.bubbleActive || false);
 
   const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -40,13 +42,19 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
     return d;
   });
 
-  // EFECTO DEL SPLASH (Duración dinámica según settings)
+  // EFECTO DEL SPLASH
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, splashDuration);
+    const timer = setTimeout(() => setShowSplash(false), splashDuration);
     return () => clearTimeout(timer);
   }, [splashDuration]);
+
+  // EFECTO DE LA BURBUJA CENTRADA (Desaparece según el bubbleDuration)
+  useEffect(() => {
+    if (sysSettings?.bubbleActive) {
+      const timer = setTimeout(() => setShowBubble(false), bubbleDuration);
+      return () => clearTimeout(timer);
+    }
+  }, [sysSettings?.bubbleActive, bubbleDuration]);
 
   useEffect(() => {
     if (selectedCourt && selectedDate) {
@@ -77,11 +85,8 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
     setError('');
 
     try {
-      // Construir la fecha en formato YYYY-MM-DD
-      const dateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000)
-        .toISOString().split('T')[0];
+      const dateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
-      // 1. Crear la reserva en la DB
       const bookingResult = await createBooking({
         courtId: selectedCourt,
         date: dateStr,
@@ -99,21 +104,17 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
 
       const { bookingId, fee, requireDeposit } = bookingResult.data;
 
-      // 2. Si la seña está activada, generar link de pago y redirigir
       if (requireDeposit && fee > 0) {
         const paymentResult = await createPaymentPreference(bookingId);
 
         if (paymentResult.success && paymentResult.init_point) {
-          // Redirigir a MercadoPago
           window.location.href = paymentResult.init_point;
           return;
         } else {
-          // Error generando link, pero la reserva se creó
           setStep(3);
           setLoading(false);
         }
       } else {
-        // Sin seña → ya quedó confirmada
         setStep(3);
         setLoading(false);
       }
@@ -124,7 +125,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
     }
   };
 
-  // --- PANTALLA SPLASH DE INICIO (Con datos dinámicos) ---
+  // --- PANTALLA SPLASH DE INICIO ---
   if (showSplash) {
     return (
       <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center animate-in fade-in duration-300">
@@ -147,9 +148,9 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
 
   // --- RENDER DE LA PWA ---
   return (
-    <div className="w-full h-full md:h-auto min-h-screen md:min-h-0 bg-white dark:bg-slate-900 md:rounded-[2rem] md:shadow-2xl md:border md:border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col relative">
+    <div className="w-full flex-1 flex flex-col relative bg-transparent">
 
-      {/* HEADER HERO RENOVADO (Limpio y centrado) */}
+      {/* HEADER HERO RENOVADO */}
       <div className="bg-slate-900 dark:bg-black px-6 py-10 text-center relative z-10 rounded-b-[2.5rem] shadow-md">
         <h2 className="text-3xl font-black tracking-tight text-white mb-2">
           Reservá tu Cancha {sportEmoji}
@@ -159,7 +160,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
         </p>
       </div>
 
-      <div className="p-5 flex-1 overflow-y-auto pb-28 space-y-8 -mt-2">
+      <div className="p-5 flex-1 overflow-y-auto pb-32 space-y-8 -mt-2 hide-scrollbar">
 
         {/* PASO 1 */}
         {step === 1 && (
@@ -221,7 +222,6 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
               <div className="space-y-3 animate-in fade-in duration-300">
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                   <div className="flex items-center"><Clock className="w-4 h-4 mr-2 text-emerald-500" /> Horarios</div>
-                  {/* Leyenda chiquita */}
                   <div className="flex items-center space-x-2 text-[10px] font-bold text-slate-400 uppercase">
                     <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-emerald-500 mr-1"></span>Libre</span>
                     <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-slate-300 mr-1"></span>Ocupado</span>
@@ -251,15 +251,11 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
                           `}
                         >
                           <span className="text-lg">{slot.time} hs</span>
-
-                          {/* Etiqueta debajo de la hora */}
                           <span className="text-[10px] uppercase tracking-wider mt-0.5 opacity-80">
                             {isAvailable ? (isSelected ? 'Seleccionado' : 'Disponible') :
                               slot.status === 'FIXED' ? 'Abono Fijo' :
                                 slot.status === 'BLOCKED' ? 'Cancha Cerrada' : 'Ocupado'}
                           </span>
-
-                          {/* Icono de candado de fondo si está bloqueado/ocupado */}
                           {!isAvailable && (
                             <Lock className="absolute -right-2 -bottom-2 w-10 h-10 text-slate-200 dark:text-slate-700 opacity-50" />
                           )}
@@ -298,23 +294,23 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
 
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-slate-700 flex items-center"><User className="w-4 h-4 mr-2 text-slate-400" /> Nombre y Apellido</label>
-                <input required type="text" placeholder="Ej: Augusto Basquez" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center"><User className="w-4 h-4 mr-2 text-slate-400" /> Nombre y Apellido</label>
+                <input required type="text" placeholder="Ej: Augusto Basquez" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-white rounded-2xl font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-slate-700 flex items-center"><Phone className="w-4 h-4 mr-2 text-slate-400" /> WhatsApp</label>
-                <input required type="tel" placeholder="Ej: 3329 123456" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center"><Phone className="w-4 h-4 mr-2 text-slate-400" /> WhatsApp</label>
+                <input required type="tel" placeholder="Ej: 3329 123456" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-white rounded-2xl font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-slate-700 flex items-center"><Mail className="w-4 h-4 mr-2 text-slate-400" /> Email</label>
-                <input required type="email" placeholder="tu@email.com" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center"><Mail className="w-4 h-4 mr-2 text-slate-400" /> Email</label>
+                <input required type="email" placeholder="tu@email.com" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-white rounded-2xl font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all shadow-sm" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
               </div>
             </div>
 
             {sysSettings?.requireDeposit !== false && (
-              <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-sm text-amber-800 font-medium flex items-start">
+              <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50 p-3 rounded-xl text-sm text-amber-800 dark:text-amber-200 font-medium flex items-start">
                 <CreditCard className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5 text-amber-500" />
-                <span>Al confirmar serás redirigido a <strong>MercadoPago</strong> para pagar la seña. Tu turno se confirma automáticamente una vez acreditado el pago. Tenés 5 minutos para pagar.</span>
+                <span>Al confirmar serás redirigido a <strong>MercadoPago</strong> para pagar la seña. Tu turno se confirma automáticamente una vez acreditado el pago.</span>
               </div>
             )}
           </form>
@@ -334,7 +330,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
                 : `¡Tu lugar está asegurado! Te enviamos los detalles por WhatsApp. ${sportEmoji}`
               }
             </p>
-            <button onClick={() => window.location.reload()} className="mt-8 font-bold text-slate-900 bg-slate-100 py-4 px-8 rounded-2xl hover:bg-slate-200 transition-colors">
+            <button onClick={() => window.location.reload()} className="mt-8 font-bold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 py-4 px-8 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
               Volver al inicio
             </button>
           </div>
@@ -356,7 +352,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
             <button
               onClick={handleFinalSubmit}
               disabled={loading || !formData.name || !formData.phone || !formData.email}
-              className="w-full flex items-center justify-center bg-slate-900 text-white font-bold text-lg py-4 rounded-2xl shadow-xl transition-all hover:bg-black active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center bg-slate-900 dark:bg-emerald-500 text-white font-bold text-lg py-4 rounded-2xl shadow-xl transition-all hover:bg-black dark:hover:bg-emerald-600 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -378,20 +374,22 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
         </div>
       )}
 
-      {/* BURBUJA FLOTANTE CONDICIONAL (Avisos del Admin) */}
-      {sysSettings?.bubbleActive && sysSettings?.bubbleText && (
-        <div
-          className="fixed bottom-28 right-4 md:bottom-24 md:right-6 z-[60] p-4 rounded-2xl shadow-2xl max-w-xs animate-bounce"
-          style={{ backgroundColor: sysSettings.bubbleColor || '#10b981', color: '#fff' }}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">{sportEmoji}</span>
-            <p className="font-medium text-sm leading-tight">{sysSettings.bubbleText}</p>
+      {/* BURBUJA CENTRADA TEMPORIZADA */}
+      {showBubble && sysSettings?.bubbleText && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 pointer-events-none">
+          <div
+            className="p-8 rounded-[2rem] shadow-2xl max-w-sm w-full animate-in zoom-in-90 fade-in slide-in-from-bottom-8 duration-500 pointer-events-auto"
+            style={{ backgroundColor: sysSettings.bubbleColor || '#10b981', color: '#fff' }}
+          >
+            <div className="flex flex-col items-center gap-4 text-center">
+              <span className="text-6xl drop-shadow-md">{sportEmoji}</span>
+              <p className="font-bold text-xl leading-snug">{sysSettings.bubbleText}</p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* CSS para la barra de scroll horizontal invisible */}
+      {/* CSS Ocultar Scrollbar */}
       <style dangerouslySetInnerHTML={{
         __html: `
         .hide-scrollbar::-webkit-scrollbar { display: none; }

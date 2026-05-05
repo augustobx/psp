@@ -11,7 +11,7 @@ export default async function SettingsPage() {
     if (!settings) {
         settings = await prisma.systemSetting.create({
             data: {
-                clubName: "PSP Padel", contactPhone: "", mpAccessToken: "", reservationFee: 0,
+                clubName: "PSP Padel", topbarName: "PSP Padel", contactPhone: "", mpAccessToken: "", reservationFee: 0,
                 sportEmoji: "🎾", theme: "light", pwaEnabled: true, autoWhatsapp: false,
                 requireDeposit: true, reservationsEnabled: true, whatsappReservations: true,
                 splashLogo: "PSP", splashName: "PSP Padel", splashDuration: 1500,
@@ -27,7 +27,6 @@ export default async function SettingsPage() {
                 <p className="text-gray-500">Administra las preferencias generales, reservas y PWA.</p>
             </div>
 
-            {/* El atributo key actualiza el formulario forzosamente tras el guardado del servidor */}
             <form action={updateSystemSettings} className="space-y-6" key={settings.updatedAt?.toISOString()}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
@@ -41,18 +40,13 @@ export default async function SettingsPage() {
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="clubName">Nombre del Complejo</Label>
+                                        <Label htmlFor="clubName">Nombre (Meta/Correos)</Label>
                                         <Input id="clubName" name="clubName" defaultValue={settings.clubName} required />
                                     </div>
                                     <div className="space-y-2">
-                                        {/* NUEVO CAMPO: TOPBAR */}
-                                        <Label htmlFor="topbarName">Nombre en la Topbar</Label>
+                                        <Label htmlFor="topbarName">Nombre (Barra Superior)</Label>
                                         <Input id="topbarName" name="topbarName" defaultValue={settings.topbarName || ''} placeholder="Ej: PSP Padel" />
                                     </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="contactPhone">Teléfono de Contacto (WhatsApp)</Label>
-                                    <Input id="contactPhone" name="contactPhone" defaultValue={settings.contactPhone} placeholder="Ej: 5493329..." />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="contactPhone">Teléfono de Contacto (WhatsApp)</Label>
