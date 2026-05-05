@@ -156,98 +156,99 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
             </div>
 
             {/* Grilla Matricial Ultra Premium */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse min-w-[800px]">
-                        <thead className="sticky top-0 z-20 shadow-sm">
-                            <tr>
-                                <th className="w-20 border-b border-r border-slate-200 bg-slate-50 dark:bg-slate-800/80 backdrop-blur-md p-4 text-slate-500 font-bold text-xs uppercase tracking-wider">
-                                    Hora
-                                </th>
-                                {visibleCourts.map(court => (
-                                    <th key={court.id} className="border-b border-slate-200 bg-slate-50 dark:bg-slate-800/80 backdrop-blur-md p-4 text-slate-800 dark:text-slate-100 font-bold text-center text-sm uppercase tracking-wide">
-                                        {court.name}
+            <div className="overflow-x-auto w-full bg-white rounded-xl shadow-sm border border-slate-200">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse min-w-[800px]">
+                            <thead className="sticky top-0 z-20 shadow-sm">
+                                <tr>
+                                    <th className="w-20 border-b border-r border-slate-200 bg-slate-50 dark:bg-slate-800/80 backdrop-blur-md p-4 text-slate-500 font-bold text-xs uppercase tracking-wider">
+                                        Hora
                                     </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {timeSlots.map((time, index) => {
-                                const isHour = time.endsWith(':00');
-                                const dateStr = new Date(currentDate.getTime() - currentDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-                                const slotDateTime = new Date(`${dateStr}T${time}:00`);
+                                    {visibleCourts.map(court => (
+                                        <th key={court.id} className="border-b border-slate-200 bg-slate-50 dark:bg-slate-800/80 backdrop-blur-md p-4 text-slate-800 dark:text-slate-100 font-bold text-center text-sm uppercase tracking-wide">
+                                            {court.name}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {timeSlots.map((time, index) => {
+                                    const isHour = time.endsWith(':00');
+                                    const dateStr = new Date(currentDate.getTime() - currentDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                                    const slotDateTime = new Date(`${dateStr}T${time}:00`);
 
-                                return (
-                                    <tr key={time}>
-                                        {/* Columna de Horarios */}
-                                        <td className="border-r border-slate-200 dark:border-slate-800/50 relative bg-white dark:bg-slate-900 w-20">
-                                            <div className={`absolute top-0 right-3 -mt-2.5 text-xs font-bold ${isHour ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-600'}`}>
-                                                {time}
-                                            </div>
-                                            {/* Línea sutil separadora de hora */}
-                                            <div className="absolute top-0 right-0 w-2 border-t border-slate-200 dark:border-slate-700"></div>
-                                        </td>
+                                    return (
+                                        <tr key={time}>
+                                            {/* Columna de Horarios */}
+                                            <td className="border-r border-slate-200 dark:border-slate-800/50 relative bg-white dark:bg-slate-900 w-20">
+                                                <div className={`absolute top-0 right-3 -mt-2.5 text-xs font-bold ${isHour ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-600'}`}>
+                                                    {time}
+                                                </div>
+                                                {/* Línea sutil separadora de hora */}
+                                                <div className="absolute top-0 right-0 w-2 border-t border-slate-200 dark:border-slate-700"></div>
+                                            </td>
 
-                                        {/* Columnas de Canchas */}
-                                        {visibleCourts.map((court, colIndex) => {
-                                            const startingBooking = bookings.find(b => b.courtId === court.id && new Date(b.startTime).getTime() === slotDateTime.getTime());
+                                            {/* Columnas de Canchas */}
+                                            {visibleCourts.map((court, colIndex) => {
+                                                const startingBooking = bookings.find(b => b.courtId === court.id && new Date(b.startTime).getTime() === slotDateTime.getTime());
 
-                                            // 1. RENDERIZAR TURNO OCUPADO
-                                            if (startingBooking) {
-                                                const durationMins = (new Date(startingBooking.endTime).getTime() - new Date(startingBooking.startTime).getTime()) / 60000;
-                                                const rowSpan = Math.max(1, Math.ceil(durationMins / 30));
+                                                // 1. RENDERIZAR TURNO OCUPADO
+                                                if (startingBooking) {
+                                                    const durationMins = (new Date(startingBooking.endTime).getTime() - new Date(startingBooking.startTime).getTime()) / 60000;
+                                                    const rowSpan = Math.max(1, Math.ceil(durationMins / 30));
 
+                                                    return (
+                                                        <td key={court.id} rowSpan={rowSpan} className="p-0.5 border-b border-r border-slate-200 dark:border-slate-800 align-top relative">
+                                                            <div
+                                                                onClick={() => { setSelectedBooking(startingBooking); setModalMode('VIEW'); setModalOpen(true); }}
+                                                                className={`absolute inset-0.5 rounded-lg border-l-4 p-3 cursor-pointer transition-all hover:brightness-95 shadow-sm overflow-hidden flex flex-col justify-start ${getBlockStyle(startingBooking.status)}`}
+                                                            >
+                                                                <div className="flex items-center font-bold text-sm mb-1">
+                                                                    {getIcon(startingBooking.status)}
+                                                                    {new Date(startingBooking.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} - {new Date(startingBooking.endTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                                                </div>
+                                                                <div className="text-sm font-semibold opacity-90 ml-5 flex items-center mt-1">
+                                                                    <User className="w-3.5 h-3.5 mr-1.5 opacity-70" />
+                                                                    <span className="truncate">{startingBooking.user?.name || startingBooking.description || 'Turno Registrado'}</span>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                }
+
+                                                // Verificar si el bloque está pisado por un rowSpan anterior
+                                                const isOverlapped = bookings.some(b => {
+                                                    if (b.courtId !== court.id) return false;
+                                                    const start = new Date(b.startTime).getTime();
+                                                    const end = new Date(b.endTime).getTime();
+                                                    const current = slotDateTime.getTime();
+                                                    return current > start && current < end;
+                                                });
+
+                                                if (isOverlapped) return null;
+
+                                                // 2. RENDERIZAR ESPACIO LIBRE (VERDE)
                                                 return (
-                                                    <td key={court.id} rowSpan={rowSpan} className="p-0.5 border-b border-r border-slate-200 dark:border-slate-800 align-top relative">
-                                                        <div
-                                                            onClick={() => { setSelectedBooking(startingBooking); setModalMode('VIEW'); setModalOpen(true); }}
-                                                            className={`absolute inset-0.5 rounded-lg border-l-4 p-3 cursor-pointer transition-all hover:brightness-95 shadow-sm overflow-hidden flex flex-col justify-start ${getBlockStyle(startingBooking.status)}`}
-                                                        >
-                                                            <div className="flex items-center font-bold text-sm mb-1">
-                                                                {getIcon(startingBooking.status)}
-                                                                {new Date(startingBooking.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} - {new Date(startingBooking.endTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                                                            </div>
-                                                            <div className="text-sm font-semibold opacity-90 ml-5 flex items-center mt-1">
-                                                                <User className="w-3.5 h-3.5 mr-1.5 opacity-70" />
-                                                                <span className="truncate">{startingBooking.user?.name || startingBooking.description || 'Turno Registrado'}</span>
-                                                            </div>
+                                                    <td
+                                                        key={court.id}
+                                                        className={`p-0 border-b border-r border-slate-200 dark:border-slate-800 bg-emerald-50/40 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors cursor-pointer group h-[52px] ${colIndex === visibleCourts.length - 1 ? 'border-r-0' : ''}`}
+                                                        onClick={() => handleEmptyClick(court.id, time)}
+                                                    >
+                                                        <div className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-100 text-emerald-700 dark:text-emerald-400 font-bold text-xs uppercase tracking-wide">
+                                                            <Plus className="w-4 h-4 mr-1 stroke-[3]" /> Reservar {time}
                                                         </div>
                                                     </td>
                                                 );
-                                            }
-
-                                            // Verificar si el bloque está pisado por un rowSpan anterior
-                                            const isOverlapped = bookings.some(b => {
-                                                if (b.courtId !== court.id) return false;
-                                                const start = new Date(b.startTime).getTime();
-                                                const end = new Date(b.endTime).getTime();
-                                                const current = slotDateTime.getTime();
-                                                return current > start && current < end;
-                                            });
-
-                                            if (isOverlapped) return null;
-
-                                            // 2. RENDERIZAR ESPACIO LIBRE (VERDE)
-                                            return (
-                                                <td
-                                                    key={court.id}
-                                                    className={`p-0 border-b border-r border-slate-200 dark:border-slate-800 bg-emerald-50/40 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors cursor-pointer group h-[52px] ${colIndex === visibleCourts.length - 1 ? 'border-r-0' : ''}`}
-                                                    onClick={() => handleEmptyClick(court.id, time)}
-                                                >
-                                                    <div className="h-full w-full flex items-center justify-center opacity-0 group-hover:opacity-100 text-emerald-700 dark:text-emerald-400 font-bold text-xs uppercase tracking-wide">
-                                                        <Plus className="w-4 h-4 mr-1 stroke-[3]" /> Reservar {time}
-                                                    </div>
-                                                </td>
-                                            );
-                                        })}
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                            })}
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-
             {/* MODAL MANTIENE SU DISEÑO LIMPIO */}
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                 <DialogContent className="sm:max-w-[450px] rounded-2xl">
@@ -326,8 +327,8 @@ export default function AdminCalendar({ courts }: { courts: any[] }) {
                                     <div className="flex justify-between items-center pt-1">
                                         <span className="text-sm font-semibold text-slate-500">Estado</span>
                                         <span className={`font-bold uppercase text-[10px] px-2.5 py-1 rounded-full ${selectedBooking.status === 'BLOCKED' ? 'bg-red-100 text-red-700' :
-                                                selectedBooking.status === 'FIXED' ? 'bg-purple-100 text-purple-700' :
-                                                    selectedBooking.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                            selectedBooking.status === 'FIXED' ? 'bg-purple-100 text-purple-700' :
+                                                selectedBooking.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
                                                     'bg-emerald-100 text-emerald-700'
                                             }`}>
                                             {selectedBooking.status}
