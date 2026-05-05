@@ -1,9 +1,8 @@
 "use server"
 
-import { prisma } from "@/lib/prisma"; // <-- Cambiado: Agregadas las llaves { }
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-// Restauramos esta función que la necesita el home (page.tsx)
 export async function getSettings() {
     try {
         const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
@@ -41,9 +40,8 @@ export async function updateSystemSettings(formData: FormData) {
         revalidatePath("/admin/settings");
         revalidatePath("/");
 
-        return { success: true, message: "Configuración guardada exitosamente" };
+        // Eliminamos los "return { success... }" para que la función sea Promise<void>
     } catch (error) {
         console.error("Error updating settings:", error);
-        return { success: false, message: "Hubo un error al guardar la configuración" };
     }
 }
