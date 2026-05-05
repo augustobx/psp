@@ -234,9 +234,12 @@ model SystemSetting {
   pwaEnabled       Boolean  @default(true)
   autoWhatsapp     Boolean  @default(false)
   requireDeposit   Boolean  @default(true)
+  reservationsEnabled  Boolean  @default(true)
+  whatsappReservations Boolean  @default(true)
   
   // --- CONFIGURACIÓN DE LA APP / PWA ---
   splashLogo       String   @default("PSP")
+  splashName       String   @default("PSP Padel")
   splashDuration   Int      @default(1500)
   
   bubbleActive     Boolean  @default(false)

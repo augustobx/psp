@@ -9,13 +9,13 @@ export default async function SettingsPage() {
     let settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
 
     if (!settings) {
-        // Valores por defecto si no hay nada en la BD
         settings = await prisma.systemSetting.create({
             data: {
-                clubName: "PSP Padel", contactPhone: "", reservationFee: 0, mpAccessToken: "",
-                theme: "light", splashLogo: "", splashName: "", splashDuration: 3000,
-                bubbleActive: false, bubbleText: "", pwaEnabled: true,
-                reservationsEnabled: true, whatsappReservations: true, autoWhatsapp: false
+                clubName: "PSP Padel", contactPhone: "", mpAccessToken: "", reservationFee: 0,
+                sportEmoji: "🎾", theme: "light", pwaEnabled: true, autoWhatsapp: false,
+                requireDeposit: true, reservationsEnabled: true, whatsappReservations: true,
+                splashLogo: "PSP", splashName: "PSP Padel", splashDuration: 1500,
+                bubbleActive: false, bubbleText: "¡Bienvenidos!", bubbleDuration: 3000, bubbleColor: "#10b981"
             }
         });
     }
@@ -46,12 +46,18 @@ export default async function SettingsPage() {
                                     <Label htmlFor="contactPhone">Teléfono de Contacto (WhatsApp)</Label>
                                     <Input id="contactPhone" name="contactPhone" defaultValue={settings.contactPhone} placeholder="Ej: 5493329..." />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="theme">Tema (Color)</Label>
-                                    <select id="theme" name="theme" defaultValue={settings.theme || 'light'} className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm">
-                                        <option value="light">Claro (Light)</option>
-                                        <option value="dark">Oscuro (Dark)</option>
-                                    </select>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="sportEmoji">Emoji del Deporte</Label>
+                                        <Input id="sportEmoji" name="sportEmoji" defaultValue={settings.sportEmoji} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="theme">Tema (Color)</Label>
+                                        <select id="theme" name="theme" defaultValue={settings.theme} className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm">
+                                            <option value="light">Claro</option>
+                                            <option value="dark">Oscuro</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -66,7 +72,7 @@ export default async function SettingsPage() {
                                 <div className="flex items-center justify-between p-3 border rounded-lg">
                                     <div>
                                         <Label htmlFor="reservationsEnabled">Activar Reservas Web</Label>
-                                        <p className="text-xs text-gray-500">Si se apaga, pausará la grilla web de turnos.</p>
+                                        <p className="text-xs text-gray-500">Si se apaga, pausará la grilla web.</p>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" id="reservationsEnabled" name="reservationsEnabled" defaultChecked={settings.reservationsEnabled} className="sr-only peer" />
@@ -93,7 +99,7 @@ export default async function SettingsPage() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Pagos y API de Meta</CardTitle>
-                                <CardDescription>MercadoPago y Notificaciones automáticas.</CardDescription>
+                                <CardDescription>MercadoPago y Notificaciones.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
@@ -101,27 +107,31 @@ export default async function SettingsPage() {
                                         <Label htmlFor="reservationFee">Costo Seña ($)</Label>
                                         <Input id="reservationFee" name="reservationFee" type="number" defaultValue={settings.reservationFee} required />
                                     </div>
-                                    <div className="flex flex-col justify-end">
-                                        <div className="flex items-center justify-between p-2 border rounded-lg h-10">
-                                            <Label htmlFor="autoWhatsapp" className="text-sm">API Meta</Label>
-                                            <label className="relative inline-flex items-center cursor-pointer scale-90">
-                                                <input type="checkbox" id="autoWhatsapp" name="autoWhatsapp" defaultChecked={settings.autoWhatsapp} className="sr-only peer" />
-                                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                            </label>
-                                        </div>
+                                    <div className="space-y-2 pt-8">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" id="requireDeposit" name="requireDeposit" defaultChecked={settings.requireDeposit} className="w-4 h-4 rounded border-gray-300" />
+                                            <span className="text-sm font-medium">Requerir Seña</span>
+                                        </label>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="mpAccessToken">MercadoPago Access Token</Label>
                                     <Input id="mpAccessToken" name="mpAccessToken" type="password" defaultValue={settings.mpAccessToken} />
                                 </div>
+                                <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50 mt-2">
+                                    <Label htmlFor="autoWhatsapp">Notificaciones Automáticas API Meta</Label>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="autoWhatsapp" name="autoWhatsapp" defaultChecked={settings.autoWhatsapp} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
                             </CardContent>
                         </Card>
 
                         <Card>
                             <CardHeader>
-                                <CardTitle>Burbuja de Mensaje Flotante</CardTitle>
-                                <CardDescription>Aviso o información importante para los clientes.</CardDescription>
+                                <CardTitle>Burbuja de Mensaje</CardTitle>
+                                <CardDescription>Aviso flotante para los clientes.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -133,7 +143,20 @@ export default async function SettingsPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="bubbleText">Mensaje a mostrar</Label>
-                                    <Input id="bubbleText" name="bubbleText" defaultValue={settings.bubbleText || ''} placeholder="Ej: ¡Hoy torneo 6ta categoría!" />
+                                    <Input id="bubbleText" name="bubbleText" defaultValue={settings.bubbleText} placeholder="Ej: ¡Hoy torneo!" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="bubbleColor">Color del Fondo</Label>
+                                        <div className="flex gap-2">
+                                            <Input id="bubbleColor" name="bubbleColor" type="color" defaultValue={settings.bubbleColor} className="w-12 p-1 h-10" />
+                                            <Input defaultValue={settings.bubbleColor} disabled className="h-10 text-xs" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="bubbleDuration">Duración (ms)</Label>
+                                        <Input id="bubbleDuration" name="bubbleDuration" type="number" defaultValue={settings.bubbleDuration} />
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -143,13 +166,13 @@ export default async function SettingsPage() {
                     <Card className="md:col-span-2">
                         <CardHeader>
                             <CardTitle>PWA & Splash Screen</CardTitle>
-                            <CardDescription>Configuración de la aplicación y pantalla de carga inicial.</CardDescription>
+                            <CardDescription>Configuración de la aplicación web instalable.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50">
                                 <div>
                                     <Label htmlFor="pwaEnabled" className="text-base font-medium">Activar funciones PWA</Label>
-                                    <p className="text-sm text-gray-500">Habilita el comportamiento de aplicación web instalable.</p>
+                                    <p className="text-sm text-gray-500">Habilita el comportamiento de app.</p>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer">
                                     <input type="checkbox" id="pwaEnabled" name="pwaEnabled" defaultChecked={settings.pwaEnabled} className="sr-only peer" />
@@ -168,7 +191,7 @@ export default async function SettingsPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="splashDuration">Duración (ms)</Label>
-                                    <Input id="splashDuration" name="splashDuration" type="number" defaultValue={settings.splashDuration || 3000} />
+                                    <Input id="splashDuration" name="splashDuration" type="number" defaultValue={settings.splashDuration} />
                                 </div>
                             </div>
                         </CardContent>

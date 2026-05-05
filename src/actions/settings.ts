@@ -15,18 +15,20 @@ export async function getSettings() {
 
 export async function updateSystemSettings(formData: FormData) {
     try {
-        // 1. Switches booleanos capturados correctamente con .has()
-        const reservationsEnabled = formData.has("reservationsEnabled"); // Activar/desactivar el sistema de reservas web
-        const whatsappReservations = formData.has("whatsappReservations"); // Activar/desactivar reserva por wsp
-        const pwaEnabled = formData.has("pwaEnabled"); // Activar/desactivar la PWA
-        const autoWhatsapp = formData.has("autoWhatsapp"); // Meta API
-        const bubbleActive = formData.has("bubbleActive"); // Activar burbuja de mensaje
+        // 1. Toggles Booleanos
+        const reservationsEnabled = formData.has("reservationsEnabled");
+        const whatsappReservations = formData.has("whatsappReservations");
+        const pwaEnabled = formData.has("pwaEnabled");
+        const autoWhatsapp = formData.has("autoWhatsapp");
+        const bubbleActive = formData.has("bubbleActive");
+        const requireDeposit = formData.has("requireDeposit");
 
-        // 2. Textos, números y configuraciones generales
+        // 2. Textos y Números
         const clubName = formData.get("clubName") as string;
         const contactPhone = formData.get("contactPhone") as string;
-        const reservationFee = Number(formData.get("reservationFee"));
         const mpAccessToken = formData.get("mpAccessToken") as string;
+        const reservationFee = Number(formData.get("reservationFee"));
+        const sportEmoji = formData.get("sportEmoji") as string;
         const theme = formData.get("theme") as string;
 
         // 3. Splash y Burbuja
@@ -34,24 +36,16 @@ export async function updateSystemSettings(formData: FormData) {
         const splashName = formData.get("splashName") as string;
         const splashDuration = Number(formData.get("splashDuration"));
         const bubbleText = formData.get("bubbleText") as string;
+        const bubbleColor = formData.get("bubbleColor") as string;
+        const bubbleDuration = Number(formData.get("bubbleDuration"));
 
         await prisma.systemSetting.update({
             where: { id: 1 },
             data: {
-                clubName,
-                contactPhone,
-                reservationFee,
-                mpAccessToken,
-                theme,
-                reservationsEnabled,
-                whatsappReservations,
-                pwaEnabled,
-                autoWhatsapp,
-                bubbleActive,
-                bubbleText,
-                splashLogo,
-                splashName,
-                splashDuration,
+                clubName, contactPhone, mpAccessToken, reservationFee, sportEmoji, theme,
+                reservationsEnabled, whatsappReservations, pwaEnabled, autoWhatsapp, requireDeposit,
+                splashLogo, splashName, splashDuration,
+                bubbleActive, bubbleText, bubbleColor, bubbleDuration
             },
         });
 
