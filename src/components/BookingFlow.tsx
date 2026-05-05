@@ -13,6 +13,14 @@ interface SlotData {
 
 export default function BookingFlow({ courts, sysSettings }: { courts: any[], sysSettings?: any }) {
   const isDark = sysSettings?.theme === 'dark';
+
+  // VARIABLES DINÁMICAS DESDE LA BASE DE DATOS
+  const splashDuration = sysSettings?.splashDuration || 1500;
+  const splashLogo = sysSettings?.splashLogo || "";
+  const splashName = sysSettings?.splashName || "Sistema PSP";
+  const clubName = sysSettings?.clubName || "Padel Club";
+  const sportEmoji = sysSettings?.sportEmoji || "🎾";
+
   // ESTADO DEL SPLASH SCREEN
   const [showSplash, setShowSplash] = useState(true);
 
@@ -32,13 +40,13 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
     return d;
   });
 
-  // EFECTO DEL SPLASH (Dura 1.5 segundos y desaparece suavemente)
+  // EFECTO DEL SPLASH (Duración dinámica según settings)
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 1500);
+    }, splashDuration);
     return () => clearTimeout(timer);
-  }, []);
+  }, [splashDuration]);
 
   useEffect(() => {
     if (selectedCourt && selectedDate) {
@@ -116,17 +124,23 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
     }
   };
 
-  // --- PANTALLA SPLASH DE INICIO (Nivel App Nativa) ---
+  // --- PANTALLA SPLASH DE INICIO (Con datos dinámicos) ---
   if (showSplash) {
     return (
       <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center animate-in fade-in duration-300">
-        <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center font-black text-slate-900 text-3xl mb-6 shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-bounce">
-          PSP
+        <div className="flex flex-col items-center animate-bounce">
+          {splashLogo ? (
+            <img src={splashLogo} alt={splashName} className="w-32 h-32 object-contain mb-6 rounded-2xl shadow-[0_0_40px_rgba(16,185,129,0.3)]" />
+          ) : (
+            <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center font-black text-slate-900 text-5xl mb-6 shadow-[0_0_40px_rgba(16,185,129,0.3)]">
+              {sportEmoji}
+            </div>
+          )}
         </div>
         <h1 className="text-3xl font-black tracking-tight text-white mb-1">
-          Sistema PSP
+          {splashName}
         </h1>
-        <p className="text-emerald-400 font-bold tracking-widest text-sm uppercase">Padel Club</p>
+        <p className="text-emerald-400 font-bold tracking-widest text-sm uppercase">{clubName}</p>
       </div>
     );
   }
@@ -138,7 +152,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
       {/* HEADER HERO RENOVADO (Limpio y centrado) */}
       <div className="bg-slate-900 dark:bg-black px-6 py-10 text-center relative z-10 rounded-b-[2.5rem] shadow-md">
         <h2 className="text-3xl font-black tracking-tight text-white mb-2">
-          Reservá tu Cancha 🎾
+          Reservá tu Cancha {sportEmoji}
         </h2>
         <p className="text-slate-400 text-sm font-medium">
           Elegí día, horario y preparate para jugar.
@@ -316,8 +330,8 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
             <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 mb-3">¡Reserva {sysSettings?.requireDeposit !== false ? 'registrada' : 'confirmada'}!</h3>
             <p className="text-slate-500 font-medium px-4 leading-relaxed">
               {sysSettings?.requireDeposit !== false
-                ? 'Tu turno queda confirmado una vez acreditado el pago. Te enviamos la confirmación por WhatsApp. 🎾'
-                : '¡Tu lugar está asegurado! Te enviamos los detalles por WhatsApp. 🎾'
+                ? `Tu turno queda confirmado una vez acreditado el pago. Te enviamos la confirmación por WhatsApp. ${sportEmoji}`
+                : `¡Tu lugar está asegurado! Te enviamos los detalles por WhatsApp. ${sportEmoji}`
               }
             </p>
             <button onClick={() => window.location.reload()} className="mt-8 font-bold text-slate-900 bg-slate-100 py-4 px-8 rounded-2xl hover:bg-slate-200 transition-colors">
@@ -329,7 +343,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
 
       {/* FOOTER FLOTANTE PWA */}
       {step < 3 && (
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800">
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-50">
           {step === 1 ? (
             <button
               onClick={handleNextStep}
@@ -361,6 +375,19 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
               )}
             </button>
           )}
+        </div>
+      )}
+
+      {/* BURBUJA FLOTANTE CONDICIONAL (Avisos del Admin) */}
+      {sysSettings?.bubbleActive && sysSettings?.bubbleText && (
+        <div
+          className="fixed bottom-28 right-4 md:bottom-24 md:right-6 z-[60] p-4 rounded-2xl shadow-2xl max-w-xs animate-bounce"
+          style={{ backgroundColor: sysSettings.bubbleColor || '#10b981', color: '#fff' }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{sportEmoji}</span>
+            <p className="font-medium text-sm leading-tight">{sysSettings.bubbleText}</p>
+          </div>
         </div>
       )}
 
