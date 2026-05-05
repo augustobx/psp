@@ -178,6 +178,31 @@ export async function createBooking(data: {
     revalidatePath('/admin/dashboard');
     revalidatePath('/reservas');
 
+    // === NOTIFICACIONES WHATSAPP ===
+    // Importamos lazy para evitar problemas de circular dependency
+    const { sendBookingConfirmation, sendBookingPendingPayment } = await import('@/lib/whatsapp/notifications');
+
+    if (!requireDeposit) {
+      // SIN SEÑA → Ya está CONFIRMED, enviar confirmación directa por WhatsApp
+      sendBookingConfirmation(booking.id).catch(err =>
+        console.error('Error enviando confirmación WhatsApp (PWA sin seña):', err)
+      );
+    } else if (requireDeposit && fee > 0) {
+      // CON SEÑA → Generar link de pago y enviarlo por WhatsApp
+      try {
+        const { createPaymentPreference } = await import('@/actions/payments');
+        const paymentResult = await createPaymentPreference(booking.id);
+
+        if (paymentResult.success && paymentResult.init_point) {
+          sendBookingPendingPayment(booking.id, paymentResult.init_point).catch(err =>
+            console.error('Error enviando link de pago WhatsApp (PWA con seña):', err)
+          );
+        }
+      } catch (err) {
+        console.error('Error generando preferencia de pago para WhatsApp:', err);
+      }
+    }
+
     return { success: true, data: { bookingId: booking.id, fee, requireDeposit } };
   } catch (error) {
     console.error('Error creating booking:', error);
