@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { Payment, MercadoPagoConfig } from 'mercadopago';
 import { prisma } from '@/lib/prisma';
-import { sendBookingConfirmation } from '@/lib/whatsapp/notifications';
+import { sendBookingConfirmation, sendAdminNotification } from '@/lib/whatsapp/notifications';
 
 export async function POST(request: Request) {
   try {
@@ -38,8 +38,11 @@ export async function POST(request: Request) {
 
           console.log(`✅ Pago aprobado para booking ${bookingId} — PaymentID: ${paymentInfo.id}`);
 
-          // 2. Enviar confirmación automática por WhatsApp
+          // 2. Enviar confirmación automática por WhatsApp al cliente
           await sendBookingConfirmation(bookingId);
+
+          // 3. NUEVO: Enviar notificación al administrador AHORA que está pagado
+          await sendAdminNotification(bookingId);
         }
       }
     }

@@ -114,71 +114,38 @@ export async function createBooking(data: {
     revalidatePath('/admin/dashboard');
     revalidatePath('/reservas');
 
-    // === NOTIFICACIONES WHATSAPP AL CLIENTE ===
-    const { sendBookingConfirmation, sendBookingPendingPayment } = await import('@/lib/whatsapp/notifications');
+    // === NOTIFICACIONES WHATSAPP AL CLIENTE (Y AL ADMIN) ===
+    // CORRECCIÓN: Importamos el módulo completo. Ya no disparamos al admin a lo loco.
+    const notifications = await import('@/lib/whatsapp/notifications');
 
     if (!requireDeposit) {
-      sendBookingConfirmation(booking.id).catch(err =>
+      // 1. Si NO requiere seña, el turno ya es seguro. Le confirmamos al cliente:
+      notifications.sendBookingConfirmation(booking.id).catch(err =>
         console.error('Error enviando confirmación WhatsApp (PWA sin seña):', err)
       );
+
+      // 2. Y también le avisamos de inmediato al admin:
+      // @ts-ignore
+      if (notifications.sendAdminNotification) {
+        // @ts-ignore
+        notifications.sendAdminNotification(booking.id).catch(err =>
+          console.error('Error enviando WhatsApp al admin:', err)
+        );
+      }
     } else if (requireDeposit && fee > 0) {
+      // Si SÍ requiere seña, le mandamos el link de pago al cliente.
+      // AL ADMIN NO LE AVISAMOS NADA. El aviso saldrá desde el Webhook de MP al pagarse.
       try {
         const { createPaymentPreference } = await import('@/actions/payments');
         const paymentResult = await createPaymentPreference(booking.id);
 
         if (paymentResult.success && paymentResult.init_point) {
-          sendBookingPendingPayment(booking.id, paymentResult.init_point).catch(err =>
+          notifications.sendBookingPendingPayment(booking.id, paymentResult.init_point).catch(err =>
             console.error('Error enviando link de pago WhatsApp (PWA con seña):', err)
           );
         }
       } catch (err) {
         console.error('Error generando preferencia de pago para WhatsApp:', err);
-      }
-    }
-
-    // === NOTIFICACIÓN AUTOMÁTICA AL ADMINISTRADOR/DUEÑO ===
-    if (settings?.courtPhone) {
-      try {
-        const courtDetails = await prisma.court.findUnique({ where: { id: data.courtId } });
-
-        // Limites de tiempo para contar los turnos de ese día exacto
-        const startOfDay = new Date(`${data.date}T00:00:00`);
-        const endOfDay = new Date(`${data.date}T23:59:59`);
-
-        // Obtenemos todas las canchas y contamos los turnos confirmados/pendientes
-        const courtsWithCounts = await prisma.court.findMany({
-          include: {
-            _count: {
-              select: {
-                bookings: {
-                  where: {
-                    startTime: { gte: startOfDay, lte: endOfDay },
-                    status: { not: 'CANCELLED' }
-                  }
-                }
-              }
-            }
-          },
-          orderBy: { name: 'asc' }
-        });
-
-        // Construir el texto del resumen
-        let countersText = "📊 *Resumen del día:*\n";
-        courtsWithCounts.forEach(c => {
-          countersText += `• ${c.name}: ${c._count.bookings} turnos\n`;
-        });
-
-        // Armar el mensaje final
-        const adminMessage = `🚨 *NUEVA RESERVA INGRESADA*\n\n👤 *Cliente:* ${data.name}\n📱 *Teléfono:* ${data.phone}\n🎾 *Cancha:* ${courtDetails?.name || 'Cancha'}\n📅 *Día:* ${data.date}\n⏰ *Hora:* ${data.time} hs\n\n${countersText}`;
-
-        // Importamos la API de WhatsApp y disparamos el mensaje
-        const { sendMessage } = await import('@/lib/whatsapp/api');
-        sendMessage(settings.courtPhone, adminMessage).catch(err =>
-          console.error('Error enviando WhatsApp al admin:', err)
-        );
-
-      } catch (adminErr) {
-        console.error('Error procesando notificación al admin:', adminErr);
       }
     }
 

@@ -7,6 +7,8 @@ import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { sendWhatsAppMessage, sendInteractiveButtons, sendInteractiveList } from './api';
 import { getSession, updateSession, clearSession, cleanupSessions } from './session';
 import { getAvailableSlotsForDate } from './slots';
+// NUEVO: Importamos la notificación para el admin
+import { sendAdminNotification } from './notifications';
 
 // ============================================================================
 // HELPERS
@@ -108,9 +110,9 @@ async function generatePaymentLink(bookingId: string): Promise<string | null> {
                     name: booking.user?.name || 'Cliente',
                 },
                 back_urls: {
-                    success: `${appUrl}/reservas/success`,
-                    failure: `${appUrl}/reservas/failure`,
-                    pending: `${appUrl}/reservas/pending`,
+                    success: `${appUrl}?status=success`,
+                    failure: `${appUrl}?status=failure`,
+                    pending: `${appUrl}?status=pending`,
                 },
                 auto_return: 'approved',
                 external_reference: booking.id,
@@ -226,7 +228,7 @@ async function sendMainMenu(phone: string) {
     const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
     const clubName = settings?.clubName || 'Padel Club';
     const template = settings?.wspWelcome || '¡Hola! 👋 Bienvenido a *{clubName}*.\n¿Qué querés hacer hoy?';
-    
+
     // Replace {clubName} and others just in case
     const message = template.replace(/\{(\w+)\}/g, (match, key) => {
         if (key === 'clubName') return clubName;
@@ -633,6 +635,11 @@ async function createBookingAndSendPaymentLink(phone: string) {
                 `👤 *A nombre de:* ${clientLabel}\n` +
                 `📌 *Estado:* ✅ Confirmado\n\n` +
                 `¡Te esperamos en PSP Padel Club! 🎾💪`
+            );
+
+            // ---> NUEVO: Avisar al admin que entró una reserva confirmada por WhatsApp <---
+            await sendAdminNotification(booking.id).catch(err =>
+                console.error('Error enviando notificación al admin (WA):', err)
             );
         }
 

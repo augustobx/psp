@@ -47,10 +47,11 @@ export async function createPaymentPreference(bookingId: string) {
           email: booking.user?.email || 'cliente@psp.local',
           name: booking.user?.name || 'Cliente',
         },
+        // CORRECCIÓN: Evitamos el 404 redirigiendo a la raíz de la app con un parámetro de estado.
         back_urls: {
-          success: `${appUrl}/reservas/success`,
-          failure: `${appUrl}/reservas/failure`,
-          pending: `${appUrl}/reservas/pending`,
+          success: `${appUrl}?status=success`,
+          failure: `${appUrl}?status=failure`,
+          pending: `${appUrl}?status=pending`,
         },
         auto_return: 'approved',
         external_reference: booking.id,

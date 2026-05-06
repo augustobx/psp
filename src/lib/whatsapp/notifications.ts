@@ -25,12 +25,12 @@ function formatTime(date: Date): string {
 /**
  * Normaliza un número de teléfono argentino al formato que acepta WhatsApp.
  * Ejemplos de entrada → salida:
- *   "3329 123456"       → "543329123456"
- *   "03329-123456"      → "543329123456"
- *   "+54 3329 123456"   → "543329123456"
- *   "54 9 3329 123456"  → "5493329123456"
- *   "5493329123456"     → "5493329123456" (ya correcto)
- *   "15 3329 1234"      → "543329123456" (intenta)
+ *   "3329 123456"      → "543329123456"
+ *   "03329-123456"     → "543329123456"
+ *   "+54 3329 123456"  → "543329123456"
+ *   "54 9 3329 123456" → "5493329123456"
+ *   "5493329123456"    → "5493329123456" (ya correcto)
+ *   "15 3329 1234"     → "543329123456" (intenta)
  */
 function normalizePhoneForWhatsApp(phone: string): string {
     // Quitar todo lo que no sea dígito
@@ -176,5 +176,67 @@ export async function sendBookingPendingPayment(
         console.log(`📩 Link de pago WhatsApp enviado a ${phone} para booking ${bookingId}`);
     } catch (error) {
         console.error(`❌ Error enviando link de pago WhatsApp para booking ${bookingId}:`, error);
+    }
+}
+
+// ============================================================================
+// NUEVO: NOTIFICACIÓN AUTOMÁTICA AL ADMINISTRADOR/DUEÑO
+// ============================================================================
+export async function sendAdminNotification(bookingId: string): Promise<void> {
+    try {
+        const booking = await prisma.booking.findUnique({
+            where: { id: bookingId },
+            include: {
+                court: true,
+                user: true,
+            },
+        });
+
+        if (!booking) return;
+
+        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+        if (!settings?.courtPhone) return;
+
+        // Limites de tiempo para contar los turnos de ese día exacto
+        const dateStr = booking.startTime.toISOString().split('T')[0];
+        const startOfDay = new Date(`${dateStr}T00:00:00`);
+        const endOfDay = new Date(`${dateStr}T23:59:59`);
+
+        // Obtenemos todas las canchas y contamos los turnos confirmados/pendientes
+        const courtsWithCounts = await prisma.court.findMany({
+            include: {
+                _count: {
+                    select: {
+                        bookings: {
+                            where: {
+                                startTime: { gte: startOfDay, lte: endOfDay },
+                                status: { not: 'CANCELLED' }
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { name: 'asc' }
+        });
+
+        // Construir el texto del resumen
+        let countersText = "📊 *Resumen del día:*\n";
+        courtsWithCounts.forEach(c => {
+            countersText += `• ${c.name}: ${c._count.bookings} turnos\n`;
+        });
+
+        const clientName = booking.user?.name || 'Cliente';
+        const clientPhone = booking.user?.phone || 'Sin teléfono';
+        const courtName = booking.court.name;
+        const fecha = formatDateStr(booking.startTime);
+        const hora = formatTime(booking.startTime);
+
+        // Armar el mensaje final
+        const adminMessage = `🚨 *NUEVA RESERVA CONFIRMADA*\n\n👤 *Cliente:* ${clientName}\n📱 *Teléfono:* ${clientPhone}\n🎾 *Cancha:* ${courtName}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora} hs\n\n${countersText}`;
+
+        await sendWhatsAppMessage(settings.courtPhone, adminMessage);
+        console.log(`📩 Notificación a Admin enviada a ${settings.courtPhone} para booking ${bookingId}`);
+    } catch (error) {
+        console.error(`❌ Error enviando notificación al admin para booking ${bookingId}:`, error);
     }
 }
