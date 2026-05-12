@@ -32,7 +32,7 @@ function formatTime(date: Date): string {
  *   "5493329123456"    → "5493329123456" (ya correcto)
  *   "15 3329 1234"     → "543329123456" (intenta)
  */
-function normalizePhoneForWhatsApp(phone: string): string {
+export function normalizePhoneForWhatsApp(phone: string): string {
     // Quitar todo lo que no sea dígito
     let digits = phone.replace(/\D/g, '');
 
@@ -43,7 +43,7 @@ function normalizePhoneForWhatsApp(phone: string): string {
 
     // Si empieza con 54 pero sin 9 (ej: 543329123456)
     if (digits.startsWith('54') && !digits.startsWith('549') && digits.length >= 11) {
-        return digits;
+        return '549' + digits.substring(2);
     }
 
     // Si empieza con 0 (ej: 03329123456), quitar el 0
@@ -59,7 +59,7 @@ function normalizePhoneForWhatsApp(phone: string): string {
     // A esta altura debería ser un número local tipo "3329123456"
     // Agregar código de país Argentina (54)
     if (!digits.startsWith('54')) {
-        digits = '54' + digits;
+        digits = '549' + digits;
     }
 
     return digits;
@@ -197,6 +197,8 @@ export async function sendAdminNotification(bookingId: string): Promise<void> {
         const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
         if (!settings?.courtPhone) return;
 
+        const adminPhone = normalizePhoneForWhatsApp(settings.courtPhone);
+
         // Limites de tiempo para contar los turnos de ese día exacto
         const dateStr = booking.startTime.toISOString().split('T')[0];
         const startOfDay = new Date(`${dateStr}T00:00:00`);
@@ -234,8 +236,8 @@ export async function sendAdminNotification(bookingId: string): Promise<void> {
         // Armar el mensaje final
         const adminMessage = `🚨 *NUEVA RESERVA CONFIRMADA*\n\n👤 *Cliente:* ${clientName}\n📱 *Teléfono:* ${clientPhone}\n🎾 *Cancha:* ${courtName}\n📅 *Día:* ${fecha}\n⏰ *Hora:* ${hora} hs\n\n${countersText}`;
 
-        await sendWhatsAppMessage(settings.courtPhone, adminMessage);
-        console.log(`📩 Notificación a Admin enviada a ${settings.courtPhone} para booking ${bookingId}`);
+        await sendWhatsAppMessage(adminPhone, adminMessage);
+        console.log(`📩 Notificación a Admin enviada a ${adminPhone} para booking ${bookingId}`);
     } catch (error) {
         console.error(`❌ Error enviando notificación al admin para booking ${bookingId}:`, error);
     }

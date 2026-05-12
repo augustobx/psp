@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/notifications';
 
 // 1. Obtener reservas por día (Para el Panel de Admin)
 export async function getBookingsByDate(dateStr: string) {
@@ -54,24 +55,27 @@ export async function createBooking(data: {
 
     const endTime = new Date(startTime.getTime() + businessHour.slotDuration * 60000);
 
+    // Importante: Normalizamos el teléfono para que PWA y WhatsApp coincidan siempre
+    const normalizedPhone = normalizePhoneForWhatsApp(data.phone);
+
     // Buscar o crear usuario ANTES de la transacción (no es crítico para race condition)
     let user = await prisma.user.findFirst({
-      where: { phone: data.phone } // <-- CORREGIDO: Buscamos por teléfono
+      where: { phone: normalizedPhone } // <-- CORREGIDO: Buscamos por teléfono
     });
 
     if (!user) {
       user = await prisma.user.create({
         data: {
-          email: `${data.phone}@cliente.psp`, // <-- CORREGIDO: Generamos un email de sistema
+          email: `${normalizedPhone}@cliente.psp`, // <-- CORREGIDO: Generamos un email de sistema
           name: data.name,
-          phone: data.phone,
+          phone: normalizedPhone,
           role: 'PLAYER',
         }
       });
     } else {
       user = await prisma.user.update({
         where: { id: user.id },
-        data: { name: data.name, phone: data.phone }
+        data: { name: data.name, phone: normalizedPhone }
       });
     }
 
