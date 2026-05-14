@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { CalendarSearch } from 'lucide-react';
 
 export default function PublicNavbar({ sysSettings }: { sysSettings?: any }) {
   const topbarTitle = sysSettings?.topbarName || "PSP Padel";
@@ -15,6 +16,15 @@ export default function PublicNavbar({ sysSettings }: { sysSettings?: any }) {
               <span className="font-black text-xl text-slate-900 dark:text-white tracking-tight">
                 {topbarTitle}
               </span>
+            </Link>
+          </div>
+          <div className="flex items-center">
+            <Link 
+              href="/mis-turnos" 
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors"
+            >
+              <CalendarSearch className="w-4 h-4" />
+              <span>Mis Turnos</span>
             </Link>
           </div>
         </div>

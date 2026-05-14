@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/notifications';
 
 export async function getPublicCourts() {
     try {
@@ -137,5 +138,52 @@ export async function getAvailableSlots(courtId: string, dateStr: string) {
     } catch (error) {
         console.error('Error calculating available slots:', error);
         return { success: false, error: 'Error al consultar disponibilidad' };
+    }
+}
+
+export async function getBookingsByPhone(phone: string) {
+    try {
+        const normalizedPhone = normalizePhoneForWhatsApp(phone);
+        
+        // Buscamos al usuario por su teléfono
+        const user = await prisma.user.findFirst({
+            where: { phone: normalizedPhone }
+        });
+
+        if (!user) {
+            return { success: true, data: [] }; // No se encontraron reservas
+        }
+
+        // Buscamos sus reservas, de los últimos 30 días y futuras
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const bookings = await prisma.booking.findMany({
+            where: {
+                userId: user.id,
+                startTime: { gte: thirtyDaysAgo }
+            },
+            include: {
+                court: true
+            },
+            orderBy: {
+                startTime: 'desc'
+            }
+        });
+
+        // Formateamos las reservas para devolver lo necesario al frontend
+        const data = bookings.map(b => ({
+            id: b.id,
+            courtName: b.court?.name || 'Cancha',
+            date: b.startTime.toLocaleDateString('es-AR'),
+            time: b.startTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+            status: b.status,
+            totalAmount: b.totalAmount.toNumber()
+        }));
+
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error fetching bookings by phone:', error);
+        return { success: false, error: 'Error al buscar los turnos' };
     }
 }
