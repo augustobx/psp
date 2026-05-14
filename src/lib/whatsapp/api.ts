@@ -46,7 +46,7 @@ export async function sendWhatsAppMessage(to: string, body: string) {
             return null;
         }
 
-        console.log('✅ Texto enviado a:', to);
+        console.log('✅ Texto enviado a:', to, '| Body:', body.substring(0, 50) + '...', '| Meta Response:', JSON.stringify(data));
         return data;
     } catch (error) {
         console.error('❌ Error interno enviando texto:', error);
