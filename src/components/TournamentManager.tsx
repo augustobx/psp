@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createCategory, generateKnockoutBracket } from '@/actions/tournament-engine';
 import { updateTournament } from '@/actions/tournaments';
+import TournamentMesaControl from './TournamentMesaControl';
+import TournamentTeamsModal from './TournamentTeamsModal';
 
 export default function TournamentManager({ tournament }: { tournament: any }) {
   const router = useRouter();
@@ -60,9 +62,7 @@ export default function TournamentManager({ tournament }: { tournament: any }) {
                     <Button variant="secondary" size="sm" onClick={() => handleGenerateBracket(cat.id)} disabled={loading}>
                       Generar Cuadro / Zonas
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => alert('Próximamente: UI de inscripción manual')}>
-                      Ver Inscriptos
-                    </Button>
+                    <TournamentTeamsModal category={cat} />
                   </div>
                 </div>
               ))}
@@ -83,7 +83,18 @@ export default function TournamentManager({ tournament }: { tournament: any }) {
         </CardContent>
       </Card>
 
-      <div className="space-y-6">
+      <div className="md:col-span-3 mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Mesa de Control (Partidos)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TournamentMesaControl tournament={tournament} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-6 md:col-span-1">
         <Card>
           <CardHeader>
             <CardTitle>Estado del Torneo</CardTitle>

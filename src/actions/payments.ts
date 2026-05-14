@@ -65,3 +65,61 @@ export async function createPaymentPreference(bookingId: string) {
     return { success: false, error: 'No se pudo inicializar el pago' };
   }
 }
+
+export async function createTournamentPaymentPreference(teamId: string) {
+  try {
+    const team = await prisma.tournamentTeam.findUnique({
+      where: { id: teamId },
+      include: { category: { include: { tournament: true } }, player1: true }
+    });
+
+    if (!team) throw new Error('Equipo no encontrado');
+
+    const tournament = team.category.tournament;
+    if (!tournament.requireDeposit || Number(tournament.depositAmount) <= 0) {
+      return { success: false, error: 'Este torneo no requiere seña.' };
+    }
+
+    const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+    const mpToken = settings?.mpAccessToken;
+
+    if (!mpToken) {
+      return { success: false, error: 'No hay token de MercadoPago configurado.' };
+    }
+
+    const client = new MercadoPagoConfig({ accessToken: mpToken });
+    const preference = new Preference(client);
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000';
+
+    const result = await preference.create({
+      body: {
+        items: [
+          {
+            id: `TORN-${team.id}`,
+            title: `Seña Torneo - ${tournament.name} (${team.category.name})`,
+            quantity: 1,
+            unit_price: Number(tournament.depositAmount),
+            currency_id: 'ARS',
+          }
+        ],
+        payer: {
+          email: team.player1?.email || 'cliente@psp.local',
+          name: team.name || team.player1?.name || 'Jugador',
+        },
+        back_urls: {
+          success: `${appUrl}/torneos/${tournament.id}?status=success`,
+          failure: `${appUrl}/torneos/${tournament.id}?status=failure`,
+          pending: `${appUrl}/torneos/${tournament.id}?status=pending`,
+        },
+        auto_return: 'approved',
+        external_reference: `TORN-${team.id}`,
+        notification_url: `${appUrl}/api/webhooks/mercadopago`,
+      }
+    });
+
+    return { success: true, init_point: result.init_point };
+  } catch (error) {
+    console.error('Error creando preferencia MP Torneo:', error);
+    return { success: false, error: 'No se pudo inicializar el pago' };
+  }
+}

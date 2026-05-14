@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { registerTeam } from '@/actions/public-tournaments';
+import { createTournamentPaymentPreference } from '@/actions/payments';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,14 +39,18 @@ export default function TournamentRegistrationPage() {
 
     const result = await registerTeam(tournamentId, categoryId, formData);
     
-    setLoading(false);
-    
-    if (result.success) {
+    if (result.success && result.teamId) {
+      // Intentar crear la preferencia de pago si aplica
+      const payRes = await createTournamentPaymentPreference(result.teamId);
+      if (payRes.success && payRes.init_point) {
+        window.location.href = payRes.init_point;
+        return; // Detener ejecución para que redirija
+      }
       setSuccess(true);
-      // Opcional: Redirigir a mercado pago si el torneo requiere seña
     } else {
       setError(result.error || 'Ocurrió un error inesperado');
     }
+    setLoading(false);
   };
 
   if (success) {
