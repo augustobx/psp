@@ -58,7 +58,11 @@ export default function TournamentFormModal({ tournament }: { tournament?: any }
           });
         }
       } else {
-        setError(result.error || 'Ocurrió un error al guardar');
+        if (typeof result.error === 'string') {
+          setError(result.error);
+        } else {
+          setError('Error de validación: Revisa los campos ingresados.');
+        }
       }
     } catch (err) {
       console.error(err);
@@ -70,6 +74,7 @@ export default function TournamentFormModal({ tournament }: { tournament?: any }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      {/* @ts-expect-error - asChild type issue */}
       <DialogTrigger asChild>
         {tournament ? (
           <Button variant="outline" size="icon" title="Editar Torneo">

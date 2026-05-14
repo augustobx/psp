@@ -50,7 +50,7 @@ export default async function TournamentsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={t.isPublished ? "success" : "secondary"} className={t.isPublished ? "bg-green-500 hover:bg-green-600 text-white" : ""}>
+                    <Badge variant={t.isPublished ? "default" : "secondary"} className={t.isPublished ? "bg-green-500 hover:bg-green-600 text-white" : ""}>
                       {t.isPublished ? "Publicado" : "Oculto"}
                     </Badge>
                   </TableCell>

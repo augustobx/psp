@@ -28,7 +28,7 @@ export default async function TournamentDetailPage({ params }: { params: { id: s
           <ArrowLeft className="w-6 h-6 text-slate-700 dark:text-slate-300" />
         </Link>
         <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-100">{tournament.name}</h1>
-        <Badge variant={tournament.isPublished ? "success" : "secondary"} className={tournament.isPublished ? "bg-green-500 text-white ml-auto" : "ml-auto"}>
+        <Badge variant={tournament.isPublished ? "default" : "secondary"} className={tournament.isPublished ? "bg-green-500 text-white ml-auto" : "ml-auto"}>
           {tournament.isPublished ? "Publicado" : "Oculto"}
         </Badge>
       </div>
