@@ -1,9 +1,15 @@
 import { getPublicCourts } from "@/actions/public-bookings";
 import { getSettings } from "@/actions/settings";
+import { getPublicTournaments } from "@/actions/public-tournaments";
 import BookingFlow from "@/components/BookingFlow";
 import PublicNavbar from "@/components/PublicNavbar";
+import Link from "next/link";
+import { Trophy } from "lucide-react";
 
 export default async function HomePage() {
+    const pubReq = await getPublicTournaments();
+    const activeTournament = pubReq.data?.find(t => t.status === 'ONGOING' || t.status === 'REGISTRATION');
+
     const courtsRes = await getPublicCourts();
     const courts = courtsRes?.success && courtsRes?.data ? courtsRes.data : [];
 
@@ -47,6 +53,14 @@ export default async function HomePage() {
             <div className="w-full max-w-md bg-white dark:bg-slate-900 min-h-screen md:min-h-0 md:rounded-[2.5rem] md:shadow-2xl md:border md:border-slate-200 dark:border-slate-800 relative overflow-hidden flex flex-col">
                 <PublicNavbar sysSettings={settings} />
                 <BookingFlow courts={courts} sysSettings={settings} />
+                
+                {/* BURBUJA DE TORNEO ACTIVO */}
+                {activeTournament && (
+                  <Link href={`/torneos/${activeTournament.id}`} className="absolute bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2 group z-50">
+                    <Trophy className="w-6 h-6 animate-pulse text-yellow-300" />
+                    <span className="font-bold hidden group-hover:block transition-all pr-2 text-sm">{activeTournament.status === 'ONGOING' ? '¡Torneo en Juego!' : 'Torneo Abierto'}</span>
+                  </Link>
+                )}
             </div>
         </div>
     );

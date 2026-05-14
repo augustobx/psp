@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Calendar, MapPin, CreditCard, Settings, Menu, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, Calendar, MapPin, CreditCard, Settings, Menu, X, LogOut, Trophy } from 'lucide-react';
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard' },
   { name: 'Calendario', icon: Calendar, href: '/admin/calendar' },
   { name: 'Canchas', icon: MapPin, href: '/admin/courts' },
   { name: 'Gastos', icon: CreditCard, href: '/admin/expenses' },
+  { name: 'Torneos', icon: Trophy, href: '/admin/torneos' },
   { name: 'Configuración', icon: Settings, href: '/admin/settings' },
 ];
 

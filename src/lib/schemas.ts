@@ -66,6 +66,11 @@ export const tournamentSchema = z.object({
   startDate: z.coerce.date(),
   endDate: z.coerce.date(),
   entryFee: z.coerce.number().min(0, "La inscripción no puede ser negativa"),
+  isPublished: z.boolean().default(false),
+  requireDeposit: z.boolean().default(false),
+  depositAmount: z.coerce.number().min(0).default(0),
+  format: z.enum(["KNOCKOUT", "ROUND_ROBIN", "MIXED"]).default("KNOCKOUT"),
+  maxTeams: z.coerce.number().nullable().optional(),
 }).refine((data) => data.endDate >= data.startDate, {
   message: "La fecha de fin debe ser igual o posterior a la de inicio",
   path: ["endDate"],
