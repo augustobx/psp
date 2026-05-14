@@ -21,6 +21,37 @@ export async function getTournaments() {
   }
 }
 
+export async function getTournamentFull(id: string) {
+  try {
+    const tournament = await prisma.tournament.findUnique({
+      where: { id },
+      include: {
+        categories: {
+          include: {
+            teams: {
+              include: { player1: true, player2: true }
+            },
+            matches: {
+              include: { team1: true, team2: true, winner: true },
+              orderBy: [{ round: 'asc' }, { matchOrder: 'asc' }]
+            },
+            groups: {
+              include: {
+                teams: { include: { team: true }, orderBy: { points: 'desc' } },
+                matches: { include: { team1: true, team2: true } }
+              }
+            }
+          }
+        }
+      }
+    });
+    return { success: true, data: tournament };
+  } catch (error) {
+    console.error('Error fetching tournament:', error);
+    return { success: false, error: 'Error al cargar torneo' };
+  }
+}
+
 export async function createTournament(data: unknown) {
   const result = tournamentSchema.safeParse(data);
 
@@ -87,6 +118,23 @@ export async function updateTournament(id: string, data: unknown) {
   } catch (error) {
     console.error('Error actualizando torneo:', error);
     return { success: false, error: 'Error interno del servidor.' };
+  }
+}
+
+// Acción dedicada para cambiar el status (sin pasar por el schema completo)
+export async function updateTournamentStatus(id: string, status: string) {
+  try {
+    await prisma.tournament.update({
+      where: { id },
+      data: { status: status as any }
+    });
+    revalidatePath('/admin/torneos');
+    revalidatePath(`/admin/torneos/${id}`);
+    revalidatePath('/torneos');
+    return { success: true };
+  } catch (error) {
+    console.error('Error actualizando estado:', error);
+    return { success: false, error: 'Error al cambiar estado' };
   }
 }
 

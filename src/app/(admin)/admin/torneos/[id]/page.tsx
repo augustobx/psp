@@ -1,5 +1,4 @@
-import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getTournamentFull } from "@/actions/tournaments";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -7,12 +6,8 @@ import TournamentManager from "@/components/TournamentManager";
 
 export default async function TournamentDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tournament = await prisma.tournament.findUnique({
-    where: { id: params.id },
-    include: {
-      categories: true,
-    }
-  });
+  const res = await getTournamentFull(params.id);
+  const tournament = res.success ? res.data : null;
 
   if (!tournament) {
     return (
@@ -35,7 +30,7 @@ export default async function TournamentDetailPage(props: { params: Promise<{ id
         </Badge>
       </div>
 
-      <TournamentManager tournament={tournament} />
+      <TournamentManager tournament={JSON.parse(JSON.stringify(tournament))} />
     </div>
   );
 }
