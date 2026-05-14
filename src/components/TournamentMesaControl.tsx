@@ -13,8 +13,8 @@ export default function TournamentMesaControl({ tournament }: { tournament: any 
   const [loading, setLoading] = useState<string | null>(null);
   const router = useRouter();
 
-  const matches = tournament.categories.flatMap((c: any) =>
-    c.matches.map((m: any) => ({ ...m, categoryName: c.name }))
+  const matches = (tournament.categories || []).flatMap((c: any) =>
+    (c.matches || []).map((m: any) => ({ ...m, categoryName: c.name }))
   );
 
   const pendingMatches = matches.filter((m: any) => m.status !== 'COMPLETED' && m.team1Id && m.team2Id);

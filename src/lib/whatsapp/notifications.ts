@@ -93,24 +93,33 @@ export async function sendBookingConfirmation(bookingId: string): Promise<void> 
 
         const phone = normalizePhoneForWhatsApp(rawPhone);
 
-        // Preparamos las variables exactas que pide tu plantilla de Meta
-        const clientName = booking.user.name || `Cliente`;
+        const clientName = booking.user.name || 'Cliente';
         const fecha = formatDateStr(booking.startTime);
         const horaInicio = formatTime(booking.startTime);
-        const detalle = `Cancha: ${booking.court.name} - Fin: ${formatTime(booking.endTime)}`;
+        const horaFin = formatTime(booking.endTime);
+        const courtName = booking.court.name;
+        const detalle = `Cancha: ${courtName} - Fin: ${horaFin}`;
 
-        // En lugar de sendWhatsAppMessage, disparamos la plantilla:
-        // Asegurate de que 'confirmacion_turno_pwa' sea exactamente el nombre en Meta
-        await sendTemplateMessage(
+        // Intentar enviar plantilla aprobada de Meta
+        const templateResult = await sendTemplateMessage(
             phone,
             'confirmacion_turno_pwa',
             [clientName, fecha, horaInicio, detalle],
-            'es' // Estos son {{1}}, {{2}}, {{3}}, {{4}}
+            'es'
         );
 
-        console.log(`📩 Plantilla de confirmación enviada a ${phone} para booking ${bookingId}`);
+        if (templateResult) {
+            console.log(`📩 Plantilla enviada a ${phone} para booking ${bookingId}`);
+        } else {
+            // FALLBACK: Si la plantilla no existe o falla, enviar texto normal
+            console.log(`⚠️ Plantilla falló, enviando texto plano a ${phone}`);
+            const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
+            const clubName = settings?.clubName || 'Padel Club';
+            const fallbackMsg = `✅ *¡Turno confirmado, ${clientName}!*\n\n📍 *Cancha:* ${courtName}\n📅 *Fecha:* ${fecha}\n🕐 *Horario:* ${horaInicio} - ${horaFin}\n📌 *Estado:* ✅ Confirmado\n\n¡Te esperamos en ${clubName}! 💪`;
+            await sendWhatsAppMessage(phone, fallbackMsg);
+        }
     } catch (error) {
-        console.error(`❌ Error enviando plantilla de confirmación para booking ${bookingId}:`, error);
+        console.error(`❌ Error enviando confirmación para booking ${bookingId}:`, error);
     }
 }
 
