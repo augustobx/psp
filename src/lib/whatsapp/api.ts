@@ -195,3 +195,61 @@ export const sendMessage = async (to: string, text: string) => {
         return false;
     }
 };
+
+// ============================================================================
+// ENVIAR PLANTILLA (TEMPLATE) APROBADA POR META
+// ============================================================================
+export async function sendTemplateMessage(
+    to: string,
+    templateName: string,
+    variables: string[], // Array con los valores para {{1}}, {{2}}, etc.
+    languageCode: string = 'es' // Cambialo a 'es_AR' si lo registraste así en Meta
+) {
+    const { url, headers } = getConfig();
+
+    // Mapeamos tu array de strings al formato que exige Meta para las variables
+    const parameters = variables.map(text => ({
+        type: 'text',
+        text: String(text)
+    }));
+
+    const payload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'template',
+        template: {
+            name: templateName,
+            language: {
+                code: languageCode
+            },
+            components: [
+                {
+                    type: 'body',
+                    parameters: parameters
+                }
+            ]
+        }
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.error(`❌ Error de Meta API (plantilla '${templateName}'):`, JSON.stringify(data));
+            return null;
+        }
+
+        console.log(`✅ Plantilla '${templateName}' enviada a:`, to);
+        return data;
+    } catch (error) {
+        console.error(`❌ Error interno enviando plantilla '${templateName}':`, error);
+        return null;
+    }
+}

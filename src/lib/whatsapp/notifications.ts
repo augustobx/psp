@@ -3,7 +3,7 @@
 // Se usa tanto para reservas hechas por WhatsApp como por la PWA.
 
 import { prisma } from '@/lib/prisma';
-import { sendWhatsAppMessage } from './api';
+import { sendWhatsAppMessage, sendTemplateMessage } from './api';
 
 /** Formatea una fecha a "DD/MM/YYYY" */
 function formatDateStr(date: Date): string {
@@ -80,10 +80,7 @@ export async function sendBookingConfirmation(bookingId: string): Promise<void> 
     try {
         const booking = await prisma.booking.findUnique({
             where: { id: bookingId },
-            include: {
-                court: true,
-                user: true,
-            },
+            include: { court: true, user: true },
         });
 
         if (!booking || !booking.user) {
@@ -95,34 +92,24 @@ export async function sendBookingConfirmation(bookingId: string): Promise<void> 
         if (!rawPhone) return;
 
         const phone = normalizePhoneForWhatsApp(rawPhone);
-        const clientName = booking.user.name || `Cliente ${phone.slice(-4)}`;
+
+        // Preparamos las variables exactas que pide tu plantilla de Meta
+        const clientName = booking.user.name || `Cliente`;
         const fecha = formatDateStr(booking.startTime);
         const horaInicio = formatTime(booking.startTime);
-        const horaFin = formatTime(booking.endTime);
-        const amount = Number(booking.totalAmount);
+        const detalle = `Cancha: ${booking.court.name} - Fin: ${formatTime(booking.endTime)}`;
 
-        // Obtener configuración para el template
-        const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
-        const clubName = settings?.clubName || 'Padel Club';
-        const sportEmoji = settings?.sportEmoji || '🎾';
-        const template = settings?.wspConfirmed || `✅ *¡Turno confirmado, {clientName}!*\n\nTu cancha está reservada. {sportEmoji}\n\n📍 *Cancha:* {courtName}\n📅 *Fecha:* {date}\n🕐 *Horario:* {startTime} - {endTime}\n📌 *Estado:* ✅ Confirmado\n\n¡Te esperamos en {clubName}! 💪`;
+        // En lugar de sendWhatsAppMessage, disparamos la plantilla:
+        // Asegurate de que 'confirmacion_turno_pwa' sea exactamente el nombre en Meta
+        await sendTemplateMessage(
+            phone,
+            'confirmacion_turno_pwa',
+            [clientName, fecha, horaInicio, detalle] // Estos son {{1}}, {{2}}, {{3}}, {{4}}
+        );
 
-        const message = fillTemplate(template, {
-            clubName,
-            clientName,
-            courtName: booking.court.name,
-            date: fecha,
-            startTime: horaInicio,
-            endTime: horaFin,
-            fee: amount.toString(),
-            paymentLink: '',
-            sportEmoji,
-        });
-
-        await sendWhatsAppMessage(phone, message);
-        console.log(`📩 Confirmación WhatsApp enviada a ${phone} para booking ${bookingId}`);
+        console.log(`📩 Plantilla de confirmación enviada a ${phone} para booking ${bookingId}`);
     } catch (error) {
-        console.error(`❌ Error enviando confirmación WhatsApp para booking ${bookingId}:`, error);
+        console.error(`❌ Error enviando plantilla de confirmación para booking ${bookingId}:`, error);
     }
 }
 
