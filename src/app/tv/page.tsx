@@ -1,115 +1,202 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getPublicTournaments, getTournamentDetails } from '@/actions/public-tournaments';
-import { Trophy } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { getTournamentDetails, getPublicTournaments } from '@/actions/public-tournaments';
+import { Trophy, Wifi, Clock } from 'lucide-react';
 
-// TV Mode Component (Pantalla completa, rotación automática)
 export default function TvModePage() {
   const [tournament, setTournament] = useState<any>(null);
   const [slideIndex, setSlideIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [clock, setClock] = useState('');
+  const [lastUpdate, setLastUpdate] = useState('');
 
-  // Intervalos de rotación (15s por slide)
+  // Reloj en vivo
   useEffect(() => {
-    const fetchTorneo = async () => {
+    const tick = () => {
+      const now = new Date();
+      setClock(now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }));
+    };
+    tick();
+    const interval = setInterval(tick, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch data
+  const fetchData = useCallback(async () => {
+    try {
       const pubReq = await getPublicTournaments();
-      const active = pubReq.data?.find(t => t.status === 'ONGOING' || t.status === 'REGISTRATION');
-      
+      const active = pubReq.data?.find((t: any) => t.status === 'ONGOING') ||
+                     pubReq.data?.find((t: any) => t.status === 'REGISTRATION') ||
+                     pubReq.data?.[0];
+
       if (active) {
         const detailReq = await getTournamentDetails(active.id);
-        if (detailReq.success) {
+        if (detailReq.success && detailReq.data) {
           setTournament(detailReq.data);
+          setLastUpdate(new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
         }
       }
-      setLoading(false);
-    };
-
-    fetchTorneo();
-    // Refrescar data cada minuto
-    const dataInterval = setInterval(fetchTorneo, 60000);
-    return () => clearInterval(dataInterval);
+    } catch (e) {
+      console.error('TV Mode fetch error:', e);
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (!tournament) return;
-    
-    // Rotar slides cada 10 segundos
-    const slideInterval = setInterval(() => {
-      setSlideIndex((prev) => (prev + 1) % 3); // 3 slides
-    }, 10000);
-    
-    return () => clearInterval(slideInterval);
+    fetchData();
+    const interval = setInterval(fetchData, 30000); // Refresh cada 30s
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  // Calcular slides disponibles
+  const getSlides = useCallback(() => {
+    if (!tournament) return [];
+    const slides: string[] = [];
+
+    const allMatches = tournament.categories?.flatMap((c: any) =>
+      c.matches?.map((m: any) => ({ ...m, categoryName: c.name })) || []
+    ) || [];
+
+    const live = allMatches.filter((m: any) => m.status === 'IN_PROGRESS');
+    const completed = allMatches.filter((m: any) => m.status === 'COMPLETED' && m.scoreTeam1 !== 'BYE');
+    const scheduled = allMatches.filter((m: any) => m.status === 'SCHEDULED' && m.team1Id && m.team2Id);
+
+    if (live.length > 0) slides.push('live');
+    slides.push('bracket');
+    if (scheduled.length > 0) slides.push('upcoming');
+    if (completed.length > 0) slides.push('results');
+
+    return slides.length > 0 ? slides : ['bracket'];
   }, [tournament]);
 
-  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><Trophy className="w-16 h-16 animate-pulse" /></div>;
+  // Auto-rotate slides
+  useEffect(() => {
+    if (!tournament) return;
+    const slides = getSlides();
+    if (slides.length <= 1) return;
 
-  if (!tournament) {
+    const interval = setInterval(() => {
+      setSlideIndex(prev => (prev + 1) % slides.length);
+    }, 12000);
+
+    return () => clearInterval(interval);
+  }, [tournament, getSlides]);
+
+  // ============================================================
+  // LOADING
+  // ============================================================
+  if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-10">
-        <Trophy className="w-32 h-32 text-slate-800 mb-8" />
-        <h1 className="text-5xl font-bold text-slate-700">No hay torneos activos en este momento</h1>
+      <div className="h-screen flex flex-col items-center justify-center">
+        <Trophy className="w-24 h-24 text-yellow-500 animate-pulse mb-6" />
+        <p className="text-2xl text-slate-500 font-bold">Cargando torneo...</p>
       </div>
     );
   }
 
-  // Extraer todos los partidos y grupos de todas las categorías
-  const allMatches = tournament.categories.flatMap((c: any) => c.matches.map((m: any) => ({...m, categoryName: c.name})));
+  // ============================================================
+  // NO TOURNAMENT
+  // ============================================================
+  if (!tournament) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center">
+        <Trophy className="w-32 h-32 text-slate-800 mb-8" />
+        <h1 className="text-5xl font-black text-slate-700 text-center">No hay torneos activos</h1>
+        <p className="text-2xl text-slate-800 mt-4">Los torneos aparecerán aquí cuando estén publicados</p>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // DATA PROCESSING
+  // ============================================================
+  const allMatches = tournament.categories?.flatMap((c: any) =>
+    c.matches?.map((m: any) => ({ ...m, categoryName: c.name })) || []
+  ) || [];
+
   const liveMatches = allMatches.filter((m: any) => m.status === 'IN_PROGRESS');
-  const nextMatches = allMatches.filter((m: any) => m.status === 'SCHEDULED').slice(0, 5);
+  const completedMatches = allMatches.filter((m: any) => m.status === 'COMPLETED' && m.scoreTeam1 !== 'BYE' && m.scoreTeam2 !== 'BYE');
+  const scheduledMatches = allMatches.filter((m: any) => m.status === 'SCHEDULED' && m.team1Id && m.team2Id);
+
+  const slides = getSlides();
+  const currentSlide = slides[slideIndex % slides.length] || 'bracket';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white overflow-hidden flex flex-col font-sans">
-      
-      {/* HEADER DE LA TV */}
-      <div className="bg-slate-900 border-b border-slate-800 p-6 flex justify-between items-center shadow-lg">
-        <div className="flex items-center gap-4">
-          <Trophy className="w-12 h-12 text-yellow-500" />
-          <h1 className="text-5xl font-black tracking-tight">{tournament.name}</h1>
-        </div>
-        <div className="text-right">
-          <p className="text-emerald-400 font-bold text-2xl tracking-widest animate-pulse">EN VIVO</p>
-        </div>
-      </div>
-
-      {/* CONTENIDO DEL CARRUSEL */}
-      <div className="flex-1 p-8 flex flex-col relative">
-        {slideIndex === 0 && (
-          <div className="animate-in fade-in zoom-in duration-1000 h-full">
-            <h2 className="text-4xl font-bold text-blue-400 mb-8 uppercase tracking-widest text-center">Partidos en Curso</h2>
-            {liveMatches.length === 0 ? (
-              <div className="flex items-center justify-center h-[60%] text-slate-600 text-3xl font-bold">No hay partidos en curso</div>
-            ) : (
-              <div className="grid grid-cols-2 gap-8">
-                {liveMatches.map((m: any) => (
-                  <div key={m.id} className="bg-slate-900 border-l-4 border-red-500 rounded-3xl p-8 flex flex-col justify-center">
-                    <p className="text-slate-400 font-bold text-xl mb-6">{m.categoryName} - {m.roundName || `Ronda ${m.round}`}</p>
-                    <div className="flex justify-between items-center text-4xl font-black mb-4">
-                      <span>{m.team1?.name || 'TBD'}</span>
-                      <span className="text-yellow-400">{m.scoreTeam1 ?? '0'}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-4xl font-black">
-                      <span>{m.team2?.name || 'TBD'}</span>
-                      <span className="text-yellow-400">{m.scoreTeam2 ?? '0'}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+    <div className="h-screen flex flex-col overflow-hidden select-none">
+      {/* ============================================================ */}
+      {/* HEADER */}
+      {/* ============================================================ */}
+      <header className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-slate-700/50 px-8 py-5 flex justify-between items-center shrink-0">
+        <div className="flex items-center gap-5">
+          <div className="bg-yellow-500/10 p-3 rounded-2xl">
+            <Trophy className="w-10 h-10 text-yellow-500" />
           </div>
-        )}
+          <div>
+            <h1 className="text-4xl font-black tracking-tight leading-none">{tournament.name}</h1>
+            <p className="text-slate-400 text-sm mt-1">
+              {tournament.categories?.map((c: any) => c.name).join(' • ')}
+            </p>
+          </div>
+        </div>
 
-        {slideIndex === 1 && (
-          <div className="animate-in fade-in zoom-in duration-1000 h-full">
-            <h2 className="text-4xl font-bold text-purple-400 mb-8 uppercase tracking-widest text-center">Próximos Cruces</h2>
-            <div className="space-y-4">
-              {nextMatches.map((m: any, i: number) => (
-                <div key={i} className="bg-slate-900/80 rounded-2xl p-6 flex justify-between items-center border border-slate-800">
-                  <div className="text-2xl font-bold w-1/3 truncate">{m.team1?.name || 'TBD'}</div>
-                  <div className="text-slate-500 font-black text-3xl">VS</div>
-                  <div className="text-2xl font-bold w-1/3 text-right truncate">{m.team2?.name || 'TBD'}</div>
-                  <div className="w-1/4 text-right">
-                    <span className="bg-purple-500/20 text-purple-400 px-4 py-2 rounded-xl font-bold">{m.categoryName}</span>
+        <div className="flex items-center gap-6">
+          {liveMatches.length > 0 && (
+            <div className="flex items-center gap-2 bg-red-500/15 border border-red-500/30 px-5 py-2.5 rounded-2xl">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </span>
+              <span className="text-red-400 font-black text-lg tracking-wider">EN VIVO</span>
+            </div>
+          )}
+          <div className="text-right">
+            <p className="text-4xl font-black tabular-nums text-white">{clock}</p>
+            <p className="text-xs text-slate-600 flex items-center gap-1 justify-end">
+              <Wifi className="w-3 h-3" /> Actualizado: {lastUpdate}
+            </p>
+          </div>
+        </div>
+      </header>
+
+      {/* ============================================================ */}
+      {/* SLIDE INDICATORS */}
+      {/* ============================================================ */}
+      {slides.length > 1 && (
+        <div className="flex justify-center gap-2 py-3 bg-slate-900/50">
+          {slides.map((s, i) => (
+            <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === slideIndex % slides.length ? 'w-12 bg-blue-500' : 'w-4 bg-slate-700'}`} />
+          ))}
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* CONTENT */}
+      {/* ============================================================ */}
+      <main className="flex-1 overflow-hidden p-6 md:p-10">
+        {/* LIVE MATCHES */}
+        {currentSlide === 'live' && (
+          <div className="h-full flex flex-col" key="live">
+            <h2 className="text-3xl font-black text-red-400 mb-8 uppercase tracking-widest text-center flex items-center justify-center gap-3">
+              <span className="relative flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500"></span>
+              </span>
+              Partidos en Curso
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 content-center">
+              {liveMatches.map((m: any) => (
+                <div key={m.id} className="bg-gradient-to-br from-slate-800 to-slate-900 border-l-4 border-red-500 rounded-3xl p-8 shadow-2xl shadow-red-500/5">
+                  <p className="text-slate-400 font-bold text-lg mb-6 uppercase tracking-wider">{m.categoryName} — {m.roundName || `Ronda ${m.round}`}</p>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center bg-slate-700/30 rounded-2xl px-6 py-5">
+                      <span className="text-3xl font-black">{m.team1?.name || 'TBD'}</span>
+                      <span className="text-4xl font-black text-yellow-400 tabular-nums">{m.scoreTeam1 || '0'}</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-slate-700/30 rounded-2xl px-6 py-5">
+                      <span className="text-3xl font-black">{m.team2?.name || 'TBD'}</span>
+                      <span className="text-4xl font-black text-yellow-400 tabular-nums">{m.scoreTeam2 || '0'}</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -117,50 +204,128 @@ export default function TvModePage() {
           </div>
         )}
 
-        {slideIndex === 2 && (
-          <div className="animate-in fade-in zoom-in duration-1000 h-full">
-            <h2 className="text-4xl font-bold text-emerald-400 mb-8 uppercase tracking-widest text-center">Tablas de Posiciones</h2>
-            {/* Mostrar grupos si es Round Robin */}
-            <div className="grid grid-cols-2 gap-8">
-              {tournament.categories.map((c: any) => 
-                c.groups.slice(0, 2).map((g: any) => (
-                  <div key={g.id} className="bg-slate-900 rounded-3xl p-6 border border-slate-800">
-                    <h3 className="text-2xl font-bold text-yellow-500 mb-4">{c.name} - {g.name}</h3>
-                    <table className="w-full text-xl">
-                      <thead>
-                        <tr className="text-slate-500 border-b border-slate-800">
-                          <th className="text-left pb-4">Pareja</th>
-                          <th className="pb-4">Pts</th>
-                          <th className="pb-4">PJ</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {g.teams.map((gt: any) => (
-                          <tr key={gt.id} className="border-b border-slate-800/50">
-                            <td className="py-4 font-medium">{gt.team.name}</td>
-                            <td className="py-4 text-center font-black text-emerald-400">{gt.points}</td>
-                            <td className="py-4 text-center text-slate-400">{gt.matchesPlayed}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+        {/* BRACKET / CUADRO */}
+        {currentSlide === 'bracket' && (
+          <div className="h-full flex flex-col" key="bracket">
+            <h2 className="text-3xl font-black text-blue-400 mb-8 uppercase tracking-widest text-center">Cuadro del Torneo</h2>
+            <div className="flex-1 overflow-x-auto">
+              {tournament.categories?.map((cat: any) => {
+                if (!cat.matches?.length) return null;
+                const bracketMatches = cat.matches.filter((m: any) => !m.groupId);
+                const rounds = [...new Set(bracketMatches.map((m: any) => m.round))].sort((a: any, b: any) => a - b);
+
+                return (
+                  <div key={cat.id} className="mb-10">
+                    <h3 className="text-xl font-bold text-yellow-400 mb-6 text-center">{cat.name}</h3>
+                    <div className="flex gap-8 justify-center min-w-max px-4">
+                      {rounds.map((round: any) => {
+                        const roundMatches = bracketMatches
+                          .filter((m: any) => m.round === round)
+                          .sort((a: any, b: any) => a.matchOrder - b.matchOrder);
+                        const roundName = roundMatches[0]?.roundName || `Ronda ${round}`;
+
+                        return (
+                          <div key={round} className="flex flex-col min-w-[280px]" style={{ justifyContent: 'space-around' }}>
+                            <h4 className="text-center font-bold text-sm text-slate-500 mb-4 uppercase tracking-wider">{roundName}</h4>
+                            <div className="flex flex-col justify-around flex-1 gap-6">
+                              {roundMatches.map((m: any) => {
+                                const isBye = m.scoreTeam1 === 'BYE' || m.scoreTeam2 === 'BYE';
+                                if (isBye) return null;
+
+                                const isLive = m.status === 'IN_PROGRESS';
+                                const isDone = m.status === 'COMPLETED';
+
+                                return (
+                                  <div key={m.id} className={`rounded-xl overflow-hidden border ${isLive ? 'border-red-500/60 shadow-lg shadow-red-500/10' : isDone ? 'border-emerald-500/30' : 'border-slate-700/50'}`}>
+                                    {isLive && <div className="h-1 bg-red-500 animate-pulse" />}
+                                    <div className={`flex justify-between items-center px-4 py-3 border-b border-slate-700/30 ${m.winnerId === m.team1Id && m.winnerId ? 'bg-emerald-500/10' : 'bg-slate-800/60'}`}>
+                                      <span className={`text-base font-semibold truncate ${m.winnerId === m.team1Id && m.winnerId ? 'text-emerald-400' : m.team1Id ? 'text-white' : 'text-slate-600'}`}>
+                                        {m.team1?.name || 'TBD'}
+                                      </span>
+                                      <span className="font-mono font-bold text-lg tabular-nums ml-3">{m.scoreTeam1 ?? '-'}</span>
+                                    </div>
+                                    <div className={`flex justify-between items-center px-4 py-3 ${m.winnerId === m.team2Id && m.winnerId ? 'bg-emerald-500/10' : 'bg-slate-800/60'}`}>
+                                      <span className={`text-base font-semibold truncate ${m.winnerId === m.team2Id && m.winnerId ? 'text-emerald-400' : m.team2Id ? 'text-white' : 'text-slate-600'}`}>
+                                        {m.team2?.name || 'TBD'}
+                                      </span>
+                                      <span className="font-mono font-bold text-lg tabular-nums ml-3">{m.scoreTeam2 ?? '-'}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                ))
-              )}
+                );
+              })}
             </div>
           </div>
         )}
-      </div>
 
-      {/* FOOTER / SPONSORS */}
-      <div className="bg-slate-900 p-4 border-t border-slate-800 flex items-center justify-between">
-        <p className="text-slate-500 font-medium">PSP Padel System - www.psp.com</p>
-        <div className="flex gap-4 items-center">
-          <span className="text-slate-600 font-bold uppercase text-sm">Sponsor Space</span>
-          <div className="h-10 w-32 bg-slate-800 rounded"></div>
-          <div className="h-10 w-32 bg-slate-800 rounded"></div>
+        {/* UPCOMING MATCHES */}
+        {currentSlide === 'upcoming' && (
+          <div className="h-full flex flex-col" key="upcoming">
+            <h2 className="text-3xl font-black text-purple-400 mb-8 uppercase tracking-widest text-center">Próximos Cruces</h2>
+            <div className="flex-1 flex flex-col justify-center gap-5 max-w-4xl mx-auto w-full">
+              {scheduledMatches.slice(0, 6).map((m: any) => (
+                <div key={m.id} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 flex items-center border border-slate-700/50">
+                  <span className="flex-1 text-2xl font-bold text-right truncate pr-6">{m.team1?.name || 'TBD'}</span>
+                  <span className="text-slate-600 font-black text-3xl px-6 shrink-0">VS</span>
+                  <span className="flex-1 text-2xl font-bold truncate pl-6">{m.team2?.name || 'TBD'}</span>
+                  <span className="ml-6 bg-purple-500/15 text-purple-400 px-4 py-2 rounded-xl font-bold text-sm shrink-0">{m.categoryName}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* RESULTS */}
+        {currentSlide === 'results' && (
+          <div className="h-full flex flex-col" key="results">
+            <h2 className="text-3xl font-black text-emerald-400 mb-8 uppercase tracking-widest text-center">Últimos Resultados</h2>
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 content-center max-w-5xl mx-auto w-full">
+              {completedMatches.slice(-8).map((m: any) => (
+                <div key={m.id} className="bg-slate-800/50 rounded-2xl p-5 flex items-center justify-between border border-slate-700/30">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-lg font-bold ${m.winnerId === m.team1Id ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        {m.winnerId === m.team1Id ? '🏆' : ''} {m.team1?.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className={`text-lg font-bold ${m.winnerId === m.team2Id ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        {m.winnerId === m.team2Id ? '🏆' : ''} {m.team2?.name}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-4">
+                    <p className="text-yellow-400 font-mono font-bold text-lg">{m.scoreTeam1}</p>
+                    <p className="text-yellow-400 font-mono font-bold text-lg">{m.scoreTeam2}</p>
+                  </div>
+                  <div className="ml-4 shrink-0">
+                    <span className="text-xs text-slate-600 uppercase">{m.categoryName}</span>
+                    <p className="text-xs text-slate-700">{m.roundName}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ============================================================ */}
+      {/* FOOTER */}
+      {/* ============================================================ */}
+      <footer className="bg-slate-900/80 border-t border-slate-800 px-8 py-3 flex items-center justify-between shrink-0">
+        <p className="text-slate-600 font-bold text-sm">PSP Padel System</p>
+        <div className="flex items-center gap-3 text-slate-700 text-xs">
+          <Clock className="w-3 h-3" />
+          <span>Auto-refresh cada 30s</span>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }
