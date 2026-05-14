@@ -8,7 +8,8 @@ import { Trophy } from "lucide-react";
 
 export default async function HomePage() {
     const pubReq = await getPublicTournaments();
-    const activeTournament = pubReq.data?.find(t => t.status === 'ONGOING' || t.status === 'REGISTRATION');
+    // Mostrar burbuja para cualquier torneo publicado que no esté terminado
+    const activeTournament = pubReq.data?.find(t => t.status !== 'COMPLETED');
 
     const courtsRes = await getPublicCourts();
     const courts = courtsRes?.success && courtsRes?.data ? courtsRes.data : [];

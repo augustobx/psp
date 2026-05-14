@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ArrowLeft, Users, Calendar, MapPin, Trophy } from "lucide-react";
 import TournamentBracket from "@/components/TournamentBracket";
 
-export default async function PublicTournamentDetail({ params }: { params: { id: string } }) {
+export default async function PublicTournamentDetail(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const response = await getTournamentDetails(params.id);
   const tournament = response.success && response.data ? response.data : null;
 
