@@ -105,7 +105,7 @@ export async function sendBookingConfirmation(bookingId: string): Promise<void> 
             phone,
             'confirmacion_turno_pwa',
             [clientName, fecha, horaInicio, detalle],
-            'es'
+            'es_AR'
         );
 
         if (templateResult) {
