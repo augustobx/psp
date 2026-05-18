@@ -98,8 +98,8 @@ export async function sendBookingConfirmation(bookingId: string): Promise<void> 
         const horaInicio = formatTime(booking.startTime);
         const horaFin = formatTime(booking.endTime);
         const courtName = booking.court.name;
-        const detalle = `Cancha: ${courtName} - Fin: ${horaFin}`;
-
+        //const detalle = `Cancha: ${courtName} - Fin: ${horaFin}`;
+        const detalle = courtName;
         // Intentar enviar plantilla aprobada de Meta
         const templateResult = await sendTemplateMessage(
             phone,
