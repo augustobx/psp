@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { logoutAdmin } from '@/actions/auth';
 import { LayoutDashboard, Calendar, MapPin, CreditCard, Settings, Menu, X, LogOut, Trophy } from 'lucide-react';
 
 const menuItems = [
@@ -16,9 +17,15 @@ const menuItems = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
 
   const closeMenu = () => setIsOpen(false);
+
+  const handleLogout = async () => {
+    await logoutAdmin();
+    router.push('/login');
+  };
 
   return (
     <>
@@ -75,13 +82,13 @@ export default function AdminSidebar() {
 
         {/* Botón Salir */}
         <div className="p-4 border-t border-slate-800">
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-400 hover:bg-slate-800 hover:text-red-400 transition-colors"
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 px-4 py-3 rounded-xl font-medium text-slate-400 hover:bg-slate-800 hover:text-red-400 transition-colors"
           >
             <LogOut className="w-5 h-5" />
-            Volver a la Web
-          </Link>
+            Cerrar Sesión
+          </button>
         </div>
       </aside>
     </>

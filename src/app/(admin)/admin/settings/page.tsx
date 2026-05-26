@@ -109,6 +109,37 @@ export default async function SettingsPage() {
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
+
+                                <div className="flex items-center justify-between p-3 border rounded-lg">
+                                    <div>
+                                        <Label htmlFor="tournamentsEnabled">Habilitar Módulo de Torneos</Label>
+                                        <p className="text-xs text-gray-500">Muestra la sección de torneos en la PWA.</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="tournamentsEnabled" name="tournamentsEnabled" defaultChecked={settings.tournamentsEnabled} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* SEGURIDAD ADMIN */}
+                        <Card className="border-indigo-200">
+                            <CardHeader className="bg-indigo-50/50 rounded-t-lg">
+                                <CardTitle>Seguridad Panel Admin</CardTitle>
+                                <CardDescription>Credenciales para entrar a esta sección.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4 pt-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="adminUser">Usuario</Label>
+                                        <Input id="adminUser" name="adminUser" defaultValue={settings.adminUser} required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="adminPass">Contraseña</Label>
+                                        <Input id="adminPass" name="adminPass" type="password" defaultValue={settings.adminPass} required />
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>

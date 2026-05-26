@@ -296,6 +296,11 @@ model SystemSetting {
   reservationsEnabled  Boolean  @default(true)
   whatsappReservations Boolean  @default(true)
   notifyAdmin      Boolean  @default(true)
+  tournamentsEnabled Boolean @default(true)
+
+  // --- SEGURIDAD ADMIN ---
+  adminUser        String   @default("admin")
+  adminPass        String   @default("admin123")
   
   // --- CONFIGURACIÓN DE LA APP / PWA ---
   splashLogo       String   @default("PSP")

@@ -56,7 +56,7 @@ export default async function HomePage() {
                 <BookingFlow courts={courts} sysSettings={settings} />
                 
                 {/* BURBUJA DE TORNEO ACTIVO */}
-                {activeTournament && (
+                {settings?.tournamentsEnabled && activeTournament && (
                   <Link href={`/torneos/${activeTournament.id}`} className="absolute bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2 group z-50">
                     <Trophy className="w-6 h-6 animate-pulse text-yellow-300" />
                     <span className="font-bold hidden group-hover:block transition-all pr-2 text-sm">{activeTournament.status === 'ONGOING' ? '¡Torneo en Juego!' : 'Torneo Abierto'}</span>

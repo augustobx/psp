@@ -19,13 +19,15 @@ export default function PublicNavbar({ sysSettings }: { sysSettings?: any }) {
             </Link>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              href="/torneos"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30 rounded-full transition-colors"
-            >
-              <Trophy className="w-4 h-4" />
-              <span className="hidden sm:inline">Torneos</span>
-            </Link>
+            {sysSettings?.tournamentsEnabled && (
+              <Link
+                href="/torneos"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-yellow-600 hover:text-yellow-700 dark:text-yellow-400 dark:hover:text-yellow-300 bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30 rounded-full transition-colors"
+              >
+                <Trophy className="w-4 h-4" />
+                <span className="hidden sm:inline">Torneos</span>
+              </Link>
+            )}
             <Link
               href="/mis-turnos"
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors"

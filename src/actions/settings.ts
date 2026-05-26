@@ -22,16 +22,20 @@ export async function updateSystemSettings(formData: FormData) {
         const bubbleActive = formData.get("bubbleActive") === "on";
         const requireDeposit = formData.get("requireDeposit") === "on";
         const notifyAdmin = formData.get("notifyAdmin") === "on";
+        const tournamentsEnabled = formData.get("tournamentsEnabled") === "on";
 
         const clubName = (formData.get("clubName") as string) || "";
         const topbarName = (formData.get("topbarName") as string) || "";
         const contactPhone = (formData.get("contactPhone") as string) || "";
-        const courtPhone = (formData.get("courtPhone") as string) || ""; // <-- CAPTURADO
-        const apiPhone = (formData.get("apiPhone") as string) || "";     // <-- CAPTURADO
+        const courtPhone = (formData.get("courtPhone") as string) || "";
+        const apiPhone = (formData.get("apiPhone") as string) || "";
         const mpAccessToken = (formData.get("mpAccessToken") as string) || "";
         const reservationFee = Number(formData.get("reservationFee")) || 0;
         const sportEmoji = (formData.get("sportEmoji") as string) || "🎾";
         const theme = (formData.get("theme") as string) || "light";
+
+        const adminUser = (formData.get("adminUser") as string) || "admin";
+        const adminPass = (formData.get("adminPass") as string) || "admin123";
 
         const splashLogo = (formData.get("splashLogo") as string) || "";
         const splashName = (formData.get("splashName") as string) || "";
@@ -44,7 +48,8 @@ export async function updateSystemSettings(formData: FormData) {
             where: { id: 1 },
             data: {
                 clubName, topbarName, contactPhone, courtPhone, apiPhone, mpAccessToken, reservationFee, sportEmoji, theme,
-                reservationsEnabled, whatsappReservations, pwaEnabled, autoWhatsapp, requireDeposit, notifyAdmin,
+                reservationsEnabled, whatsappReservations, pwaEnabled, autoWhatsapp, requireDeposit, notifyAdmin, tournamentsEnabled,
+                adminUser, adminPass,
                 splashLogo, splashName, splashDuration,
                 bubbleActive, bubbleText, bubbleColor, bubbleDuration
             },
