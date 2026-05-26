@@ -27,6 +27,7 @@ export default function CourtFormModal({ court }: CourtFormModalProps) {
   const [formData, setFormData] = useState({
     name: court?.name || '',
     sport: court?.sport || 'Padel',
+    surface: court?.surface || 'Piso Sintético',
     isActive: court ? court.isActive : true,
   });
 
@@ -44,7 +45,7 @@ export default function CourtFormModal({ court }: CourtFormModalProps) {
         setIsOpen(false);
         // Si estamos creando una nueva, limpiamos el formulario para la próxima vez
         if (!court) {
-          setFormData({ name: '', sport: 'Padel', isActive: true });
+          setFormData({ name: '', sport: 'Padel', surface: 'Piso Sintético', isActive: true });
         }
       } else {
         setError(result.error || 'Ocurrió un error inesperado');
@@ -96,6 +97,17 @@ export default function CourtFormModal({ court }: CourtFormModalProps) {
               value={formData.sport}
               onChange={(e) => setFormData({ ...formData, sport: e.target.value })}
               placeholder="Ej: Padel"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="surface">Tipo de Superficie</Label>
+            <Input
+              id="surface"
+              value={formData.surface}
+              onChange={(e) => setFormData({ ...formData, surface: e.target.value })}
+              placeholder="Ej: Piso Sintético, Pavimento, Cemento"
               required
             />
           </div>

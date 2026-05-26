@@ -20,12 +20,13 @@ export async function getCourts() {
 }
 
 // Crear una cancha nueva
-export async function createCourt(data: { name: string; sport: string; isActive: boolean }) {
+export async function createCourt(data: { name: string; sport: string; surface: string; isActive: boolean }) {
   try {
     await prisma.court.create({
       data: {
         name: data.name,
         sport: data.sport,
+        surface: data.surface,
         isActive: data.isActive,
       },
     });
@@ -40,13 +41,14 @@ export async function createCourt(data: { name: string; sport: string; isActive:
 }
 
 // Actualizar una cancha existente
-export async function updateCourt(id: string, data: { name: string; sport: string; isActive: boolean }) {
+export async function updateCourt(id: string, data: { name: string; sport: string; surface: string; isActive: boolean }) {
   try {
     await prisma.court.update({
       where: { id },
       data: {
         name: data.name,
         sport: data.sport,
+        surface: data.surface,
         isActive: data.isActive,
       },
     });

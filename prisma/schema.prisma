@@ -65,6 +65,7 @@ model Court {
   id              String             @id @default(uuid())
   name            String
   sport           String             @default("Padel")
+  surface         String             @default("Piso Sintético")
   isActive        Boolean            @default(true)
   
   bookings        Booking[]
