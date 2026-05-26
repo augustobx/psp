@@ -33,6 +33,7 @@ export async function createCourt(data: { name: string; sport: string; surface: 
 
     revalidatePath('/admin/courts');
     revalidatePath('/reservas');
+    revalidatePath('/');
     return { success: true };
   } catch (error) {
     console.error('Error creating court:', error);
@@ -55,6 +56,7 @@ export async function updateCourt(id: string, data: { name: string; sport: strin
 
     revalidatePath('/admin/courts');
     revalidatePath('/reservas');
+    revalidatePath('/');
     return { success: true };
   } catch (error) {
     console.error('Error updating court:', error);
