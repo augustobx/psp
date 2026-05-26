@@ -21,6 +21,7 @@ export async function updateSystemSettings(formData: FormData) {
         const autoWhatsapp = formData.get("autoWhatsapp") === "on";
         const bubbleActive = formData.get("bubbleActive") === "on";
         const requireDeposit = formData.get("requireDeposit") === "on";
+        const notifyAdmin = formData.get("notifyAdmin") === "on";
 
         const clubName = (formData.get("clubName") as string) || "";
         const topbarName = (formData.get("topbarName") as string) || "";
@@ -43,7 +44,7 @@ export async function updateSystemSettings(formData: FormData) {
             where: { id: 1 },
             data: {
                 clubName, topbarName, contactPhone, courtPhone, apiPhone, mpAccessToken, reservationFee, sportEmoji, theme,
-                reservationsEnabled, whatsappReservations, pwaEnabled, autoWhatsapp, requireDeposit,
+                reservationsEnabled, whatsappReservations, pwaEnabled, autoWhatsapp, requireDeposit, notifyAdmin,
                 splashLogo, splashName, splashDuration,
                 bubbleActive, bubbleText, bubbleColor, bubbleDuration
             },

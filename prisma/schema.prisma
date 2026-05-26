@@ -295,6 +295,7 @@ model SystemSetting {
   requireDeposit   Boolean  @default(true)
   reservationsEnabled  Boolean  @default(true)
   whatsappReservations Boolean  @default(true)
+  notifyAdmin      Boolean  @default(true)
   
   // --- CONFIGURACIÓN DE LA APP / PWA ---
   splashLogo       String   @default("PSP")

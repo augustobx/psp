@@ -192,7 +192,7 @@ export async function sendAdminNotification(bookingId: string): Promise<void> {
         if (!booking) return;
 
         const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
-        if (!settings?.courtPhone) return;
+        if (!settings?.courtPhone || !settings.notifyAdmin) return;
 
         const adminPhone = normalizePhoneForWhatsApp(settings.courtPhone);
 

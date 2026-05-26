@@ -320,13 +320,31 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
               <div className="w-24 h-24 border-4 border-emerald-500 rounded-full animate-ping opacity-20"></div>
             </div>
             <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 mb-3">¡Reserva {sysSettings?.requireDeposit !== false ? 'registrada' : 'confirmada'}!</h3>
-            <p className="text-slate-500 font-medium px-4 leading-relaxed">
+            <p className="text-slate-500 font-medium px-4 leading-relaxed mb-6">
               {sysSettings?.requireDeposit !== false
                 ? `Tu turno queda confirmado una vez acreditado el pago. Te enviamos la confirmación por WhatsApp. ${sportEmoji}`
                 : `¡Tu lugar está asegurado! Te enviamos los detalles por WhatsApp. ${sportEmoji}`
               }
             </p>
-            <button onClick={() => window.location.reload()} className="mt-8 font-bold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 py-4 px-8 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+
+            {/* RESUMEN DEL TURNO EN PANTALLA DE ÉXITO */}
+            <div className="w-full max-w-sm bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 text-left space-y-4 mb-8">
+              <p className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-1">Detalles de tu turno</p>
+              <div className="flex items-center text-slate-700 dark:text-slate-200">
+                <MapPin className="w-5 h-5 mr-3 text-emerald-500" />
+                <span className="font-bold text-lg">{courts.find(c => c.id === selectedCourt)?.name || 'Cancha'}</span>
+              </div>
+              <div className="flex items-center text-slate-700 dark:text-slate-200">
+                <CalendarIcon className="w-5 h-5 mr-3 text-emerald-500" />
+                <span className="font-bold text-lg capitalize">{selectedDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+              </div>
+              <div className="flex items-center text-slate-700 dark:text-slate-200">
+                <Clock className="w-5 h-5 mr-3 text-emerald-500" />
+                <span className="font-bold text-lg">{selectedSlot} hs</span>
+              </div>
+            </div>
+
+            <button onClick={() => window.location.reload()} className="font-bold text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800 py-4 px-8 rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors w-full max-w-sm">
               Volver al inicio
             </button>
           </div>

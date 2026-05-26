@@ -144,6 +144,16 @@ export default async function SettingsPage() {
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                     </label>
                                 </div>
+                                <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50 mt-2">
+                                    <div>
+                                        <Label htmlFor="notifyAdmin">Notificar al Admin de Reservas</Label>
+                                        <p className="text-xs text-gray-500">Enviar WhatsApp al Nº de Cancha en cada reserva confirmada.</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="notifyAdmin" name="notifyAdmin" defaultChecked={settings.notifyAdmin} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                </div>
                             </CardContent>
                         </Card>
 
