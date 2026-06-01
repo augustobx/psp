@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, X, Clock, MapPin, User, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -9,6 +10,7 @@ import { getMonthlyStats } from '@/actions/monthly-calendar';
 import { getHistoryBookings } from '@/actions/history';
 
 export default function AdminMonthlyCalendar() {
+  const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [stats, setStats] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
