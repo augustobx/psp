@@ -27,22 +27,31 @@ export async function POST(request: Request) {
         const bookingId = paymentInfo.external_reference;
 
         if (bookingId) {
-          // 1. Actualizar estado de la reserva a CONFIRMED
-          await prisma.booking.update({
-            where: { id: bookingId },
-            data: {
-              status: 'CONFIRMED',
-              paymentId: String(paymentInfo.id),
-            },
+          // Verificar estado actual para no reenviar WSP en webhooks duplicados o de liberación de fondos
+          const existingBooking = await prisma.booking.findUnique({
+            where: { id: bookingId }
           });
 
-          console.log(`✅ Pago aprobado para booking ${bookingId} — PaymentID: ${paymentInfo.id}`);
+          if (existingBooking && existingBooking.status !== 'CONFIRMED') {
+            // 1. Actualizar estado de la reserva a CONFIRMED
+            await prisma.booking.update({
+              where: { id: bookingId },
+              data: {
+                status: 'CONFIRMED',
+                paymentId: String(paymentInfo.id),
+              },
+            });
 
-          // 2. Enviar confirmación automática por WhatsApp al cliente
-          await sendBookingConfirmation(bookingId);
+            console.log(`✅ Pago aprobado para booking ${bookingId} — PaymentID: ${paymentInfo.id}`);
 
-          // 3. NUEVO: Enviar notificación al administrador AHORA que está pagado
-          await sendAdminNotification(bookingId);
+            // 2. Enviar confirmación automática por WhatsApp al cliente
+            await sendBookingConfirmation(bookingId);
+
+            // 3. NUEVO: Enviar notificación al administrador AHORA que está pagado
+            await sendAdminNotification(bookingId);
+          } else if (existingBooking?.status === 'CONFIRMED') {
+            console.log(`ℹ️ Webhook MP ignorado: el booking ${bookingId} ya estaba confirmado.`);
+          }
         }
       }
     }

@@ -4,11 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { logoutAdmin } from '@/actions/auth';
-import { LayoutDashboard, Calendar, MapPin, CreditCard, Settings, Menu, X, LogOut, Trophy } from 'lucide-react';
+import { LayoutDashboard, Calendar, MapPin, CreditCard, Settings, Menu, X, LogOut, Trophy, ClipboardList } from 'lucide-react';
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard' },
   { name: 'Calendario', icon: Calendar, href: '/admin/calendar' },
+  { name: 'Historial', icon: ClipboardList, href: '/admin/history' },
   { name: 'Canchas', icon: MapPin, href: '/admin/courts' },
   { name: 'Gastos', icon: CreditCard, href: '/admin/expenses' },
   { name: 'Torneos', icon: Trophy, href: '/admin/torneos' },
