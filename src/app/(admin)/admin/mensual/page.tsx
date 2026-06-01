@@ -1,6 +1,12 @@
+import { getCourts } from "@/actions/courts";
 import AdminMonthlyCalendar from "@/components/AdminMonthlyCalendar";
 
-export default function MonthlyCalendarPage() {
+export default async function MonthlyCalendarPage() {
+    const response = await getCourts();
+    const activeCourts = response.success && response.data
+        ? response.data.filter(court => court.isActive)
+        : [];
+
     return (
         <div className="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
@@ -12,7 +18,7 @@ export default function MonthlyCalendarPage() {
                 </div>
             </div>
 
-            <AdminMonthlyCalendar />
+            <AdminMonthlyCalendar courts={activeCourts} />
         </div>
     );
 }

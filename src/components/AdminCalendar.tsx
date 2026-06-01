@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export default function AdminCalendar({ courts, initialDate }: { courts: any[], initialDate?: string }) {
+export default function AdminCalendar({ courts, initialDate, hideToolbar = false }: { courts: any[], initialDate?: string, hideToolbar?: boolean }) {
     const [selectedCourt, setSelectedCourt] = useState('ALL');
     const [currentDate, setCurrentDate] = useState(initialDate ? new Date(`${initialDate}T12:00:00`) : new Date());
     const [gridData, setGridData] = useState<any[]>([]);
@@ -77,31 +77,33 @@ export default function AdminCalendar({ courts, initialDate }: { courts: any[], 
         <div className="space-y-6 relative">
 
             {/* TOOLBAR SUPERIOR RESPONSIVA */}
-            <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => changeDay(-1)} className="rounded-full">
-                        <ChevronLeft className="h-6 w-6" />
-                    </Button>
-                    <div className="flex items-center gap-3 font-black text-lg md:text-xl min-w-[220px] justify-center text-slate-800 dark:text-white">
-                        <CalendarIcon className="h-5 w-5 md:h-6 md:w-6 text-emerald-500" />
-                        {format(currentDate, "EEEE d 'de' MMMM", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
+            {!hideToolbar && (
+                <div className="flex flex-col lg:flex-row gap-4 justify-between items-center bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" size="icon" onClick={() => changeDay(-1)} className="rounded-full">
+                            <ChevronLeft className="h-6 w-6" />
+                        </Button>
+                        <div className="flex items-center gap-3 font-black text-lg md:text-xl min-w-[220px] justify-center text-slate-800 dark:text-white">
+                            <CalendarIcon className="h-5 w-5 md:h-6 md:w-6 text-emerald-500" />
+                            {format(currentDate, "EEEE d 'de' MMMM", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => changeDay(1)} className="rounded-full">
+                            <ChevronRight className="h-6 w-6" />
+                        </Button>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => changeDay(1)} className="rounded-full">
-                        <ChevronRight className="h-6 w-6" />
-                    </Button>
-                </div>
 
-                <div className="flex items-center w-full lg:w-auto gap-2">
-                    <select
-                        value={selectedCourt}
-                        onChange={(e) => setSelectedCourt(e.target.value)}
-                        className="w-full lg:min-w-[300px] p-3 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-bold outline-none ring-2 ring-transparent focus:ring-emerald-500 transition-all text-slate-700 dark:text-slate-200"
-                    >
-                        <option value="ALL">🌟 Ver TODAS las canchas</option>
-                        {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    <div className="flex items-center w-full lg:w-auto gap-2">
+                        <select
+                            value={selectedCourt}
+                            onChange={(e) => setSelectedCourt(e.target.value)}
+                            className="w-full lg:min-w-[300px] p-3 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl font-bold outline-none ring-2 ring-transparent focus:ring-emerald-500 transition-all text-slate-700 dark:text-slate-200"
+                        >
+                            <option value="ALL">🌟 Ver TODAS las canchas</option>
+                            {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* GRILLA DE CANCHAS */}
             {loading ? (

@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, X, Clock, MapPin, User, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getMonthlyStats } from '@/actions/monthly-calendar';
-import { getHistoryBookings } from '@/actions/history';
+import AdminCalendar from '@/components/AdminCalendar';
 
-export default function AdminMonthlyCalendar() {
+export default function AdminMonthlyCalendar({ courts }: { courts: any[] }) {
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [stats, setStats] = useState<Record<string, number>>({});
@@ -18,8 +18,6 @@ export default function AdminMonthlyCalendar() {
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [dayBookings, setDayBookings] = useState<any[]>([]);
-  const [loadingDay, setLoadingDay] = useState(false);
 
   const loadStats = async (date: Date) => {
     setLoading(true);
@@ -39,19 +37,9 @@ export default function AdminMonthlyCalendar() {
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
 
-  const onDateClick = async (day: Date) => {
+  const onDateClick = (day: Date) => {
     setSelectedDate(day);
     setIsModalOpen(true);
-    setLoadingDay(true);
-    setDayBookings([]);
-
-    const dateStr = format(day, 'yyyy-MM-dd');
-    const res = await getHistoryBookings(dateStr, dateStr);
-    
-    if (res.success && res.data) {
-      setDayBookings(res.data);
-    }
-    setLoadingDay(false);
   };
 
   // Render Calendar Grid
@@ -167,10 +155,10 @@ export default function AdminMonthlyCalendar() {
         {renderCells()}
       </div>
 
-      {/* MODAL DE TURNOS DEL DÍA */}
+      {/* MODAL DE TURNOS DEL DÍA CON CALENDARIO COMPLETO */}
       {isModalOpen && selectedDate && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-5xl max-h-[95vh] rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-200">
             
             {/* Header Modal */}
             <div className="bg-slate-50 dark:bg-slate-800 p-5 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
@@ -188,90 +176,23 @@ export default function AdminMonthlyCalendar() {
                 </div>
               </div>
               <button 
-                onClick={() => setIsModalOpen(false)} 
+                onClick={() => {
+                  setIsModalOpen(false);
+                  loadStats(currentMonth); // Reload stats when modal closes in case there were new bookings
+                }} 
                 className="p-2 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Contenido Modal */}
-            <div className="p-5 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-900">
-              {loadingDay ? (
-                <div className="flex flex-col items-center justify-center py-20 text-emerald-500">
-                  <Loader2 className="w-8 h-8 animate-spin mb-4" />
-                  <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Cargando turnos...</p>
-                </div>
-              ) : dayBookings.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                    <CalendarIcon className="w-8 h-8 text-slate-300 dark:text-slate-600" />
-                  </div>
-                  <h4 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Día sin turnos</h4>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm max-w-[250px]">
-                    No se encontraron reservas registradas para esta fecha.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {dayBookings.map((booking) => (
-                    <div key={booking.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-200 dark:hover:border-emerald-900/50 transition-colors">
-                      
-                      {/* Horario y Cancha */}
-                      <div className="flex items-center gap-4">
-                        <div className="text-center min-w-[70px]">
-                          <span className="block text-lg font-black text-slate-800 dark:text-white">
-                            {format(new Date(booking.startTime), 'HH:mm')}
-                          </span>
-                          <span className="block text-xs font-bold text-slate-400">
-                            a {format(new Date(booking.endTime), 'HH:mm')}
-                          </span>
-                        </div>
-                        
-                        <div className="h-10 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
-                        
-                        <div>
-                          <div className="flex items-center text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">
-                            <MapPin className="w-3.5 h-3.5 mr-1" />
-                            {booking.court?.name || 'Cancha'}
-                          </div>
-                          {booking.status !== 'BLOCKED' ? (
-                            <div className="flex flex-col">
-                              <span className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center">
-                                <User className="w-3.5 h-3.5 text-slate-400 mr-1.5" /> 
-                                {booking.user?.name || 'Cliente local'}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-sm font-bold text-slate-500 flex items-center">
-                              <AlertCircle className="w-3.5 h-3.5 mr-1.5" />
-                              Bloqueo Administrativo
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Estado */}
-                      <div className="flex items-center sm:justify-end">
-                        {booking.status === 'CONFIRMED' && <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"><CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Confirmado</span>}
-                        {booking.status === 'PENDING' && <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"><Clock className="w-3.5 h-3.5 mr-1" /> Pendiente</span>}
-                        {booking.status === 'FIXED' && <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"><CalendarIcon className="w-3.5 h-3.5 mr-1" /> Fijo</span>}
-                      </div>
-
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Footer Modal */}
-            <div className="bg-white dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-800">
-              <Button 
-                onClick={() => router.push(`/admin/calendar?date=${format(selectedDate, 'yyyy-MM-dd')}`)}
-                className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white font-bold h-12 rounded-xl"
-              >
-                Ir al calendario de este día
-              </Button>
+            {/* Contenido Modal - ACA METEMOS ADMINCALENDAR */}
+            <div className="p-5 overflow-y-auto flex-1 bg-slate-50/30 dark:bg-slate-900/50">
+              <AdminCalendar 
+                courts={courts} 
+                initialDate={format(selectedDate, 'yyyy-MM-dd')} 
+                hideToolbar={true} 
+              />
             </div>
 
           </div>
