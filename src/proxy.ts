@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   // Solo interceptamos rutas de /admin
   if (request.nextUrl.pathname.startsWith('/admin')) {
     const authCookie = request.cookies.get('admin_auth');
