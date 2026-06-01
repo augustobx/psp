@@ -1,7 +1,11 @@
 import { getCourts } from "@/actions/courts";
 import AdminCalendar from "@/components/AdminCalendar";
 
-export default async function CalendarPage() {
+export default async function CalendarPage({
+    searchParams
+}: {
+    searchParams: { date?: string }
+}) {
     const response = await getCourts();
 
     // Filtramos solo las canchas operativas para la gestión del calendario
@@ -21,7 +25,7 @@ export default async function CalendarPage() {
             </div>
 
             {activeCourts.length > 0 ? (
-                <AdminCalendar courts={activeCourts} />
+                <AdminCalendar courts={activeCourts} initialDate={searchParams.date} />
             ) : (
                 <div className="text-center py-20 bg-white dark:bg-slate-900 border-2 border-dashed rounded-3xl">
                     <p className="text-slate-500 font-bold text-lg">No hay canchas activas configuradas.</p>

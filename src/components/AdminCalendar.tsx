@@ -10,9 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export default function AdminCalendar({ courts }: { courts: any[] }) {
+export default function AdminCalendar({ courts, initialDate }: { courts: any[], initialDate?: string }) {
     const [selectedCourt, setSelectedCourt] = useState('ALL');
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const [currentDate, setCurrentDate] = useState(initialDate ? new Date(`${initialDate}T12:00:00`) : new Date());
     const [gridData, setGridData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
