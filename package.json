@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "next start -p 3005",
+    "lint": "eslint",
+    "migrate": "npx tsx scripts/migrate.ts",
+    "clean-db": "npx tsx scripts/clean-db.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
