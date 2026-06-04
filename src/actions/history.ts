@@ -33,3 +33,38 @@ export async function getHistoryBookings(startDateStr?: string, endDateStr?: str
     return { success: false, error: 'Error al cargar el historial de reservas.' };
   }
 }
+
+export async function getFixedBookings() {
+  try {
+    const fixedBookings = await prisma.fixedBooking.findMany({
+      include: {
+        court: true,
+        user: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+    return { success: true, data: fixedBookings };
+  } catch (error) {
+    console.error('Error fetching fixed bookings:', error);
+    return { success: false, error: 'Error al cargar los abonos fijos.' };
+  }
+}
+
+export async function getCourtBlocks() {
+  try {
+    const courtBlocks = await prisma.courtBlock.findMany({
+      include: {
+        court: true,
+      },
+      orderBy: {
+        startTime: 'desc',
+      },
+    });
+    return { success: true, data: courtBlocks };
+  } catch (error) {
+    console.error('Error fetching court blocks:', error);
+    return { success: false, error: 'Error al cargar los bloqueos.' };
+  }
+}

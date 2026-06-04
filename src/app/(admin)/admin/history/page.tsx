@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getHistoryBookings } from '@/actions/history';
-import { Calendar as CalendarIcon, Search, Clock, MapPin, User, Phone, CheckCircle2, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { getHistoryBookings, getFixedBookings, getCourtBlocks } from '@/actions/history';
+import { Calendar as CalendarIcon, Search, Clock, MapPin, User, Phone, CheckCircle2, XCircle, AlertCircle, RefreshCw, Repeat } from 'lucide-react';
 
 export default function HistoryPage() {
   // Default to last 30 days and next 30 days
@@ -18,16 +18,23 @@ export default function HistoryPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   
   const [bookings, setBookings] = useState<any[]>([]);
+  const [fixed, setFixed] = useState<any[]>([]);
+  const [blocks, setBlocks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadHistory = async () => {
     setLoading(true);
-    const res = await getHistoryBookings(startDate, endDate);
-    if (res.success && res.data) {
-      setBookings(res.data);
-    } else {
-      setBookings([]);
-    }
+    
+    const [resBookings, resFixed, resBlocks] = await Promise.all([
+      getHistoryBookings(startDate, endDate),
+      getFixedBookings(),
+      getCourtBlocks()
+    ]);
+
+    if (resBookings.success) setBookings(resBookings.data || []);
+    if (resFixed.success) setFixed(resFixed.data || []);
+    if (resBlocks.success) setBlocks(resBlocks.data || []);
+
     setLoading(false);
   };
 
@@ -56,8 +63,8 @@ export default function HistoryPage() {
   const stats = {
     total: bookings.length,
     confirmed: bookings.filter(b => b.status === 'CONFIRMED').length,
-    fixed: bookings.filter(b => b.status === 'FIXED').length,
-    blocked: bookings.filter(b => b.status === 'BLOCKED').length,
+    fixed: fixed.length,
+    blocked: blocks.length,
     cancelled: bookings.filter(b => b.status === 'CANCELLED').length,
     pending: bookings.filter(b => b.status === 'PENDING').length,
   };
@@ -150,36 +157,140 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Tables based on filter */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Fecha y Hora</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cancha</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cliente</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Monto</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500" />
-                    Cargando historial...
-                  </td>
+          {statusFilter === 'FIXED' ? (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Día y Hora</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cancha</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cliente</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Vigencia</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
                 </tr>
-              ) : filteredBookings.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                    No se encontraron turnos con estos filtros.
-                  </td>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {fixed.length === 0 ? (
+                  <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-500">No hay abonos fijos registrados.</td></tr>
+                ) : (
+                  fixed.map((fb) => {
+                    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                    return (
+                      <tr key={fb.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <Repeat className="w-4 h-4 text-blue-500 mr-2" />
+                            <span className="font-bold text-slate-900 dark:text-white">Todos los {days[fb.dayOfWeek]}</span>
+                            <span className="ml-2 text-slate-500">{fb.startTime} a {fb.endTime} hs</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-slate-700 dark:text-slate-300">
+                            <MapPin className="w-4 h-4 text-emerald-500 mr-2" />
+                            <span className="font-bold">{fb.court?.name || 'N/A'}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-900 dark:text-white flex items-center">
+                              <User className="w-3 h-3 text-slate-400 mr-1" /> {fb.user?.name || 'N/A'}
+                            </span>
+                            <span className="text-xs text-slate-500 flex items-center mt-0.5">
+                              <Phone className="w-3 h-3 text-slate-400 mr-1" /> {fb.user?.phone || 'N/A'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                          {new Date(fb.startDate).toLocaleDateString('es-AR')} - {new Date(fb.endDate).toLocaleDateString('es-AR')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {fb.isActive ? 
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"><CheckCircle2 className="w-3 h-3 mr-1" /> Activo</span> : 
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800"><XCircle className="w-3 h-3 mr-1" /> Inactivo</span>
+                          }
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          ) : statusFilter === 'BLOCKED' ? (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Fecha y Hora</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cancha</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Motivo</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
                 </tr>
-              ) : (
-                filteredBookings.map((booking: any) => (
-                  <tr key={booking.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {blocks.length === 0 ? (
+                  <tr><td colSpan={4} className="px-6 py-12 text-center text-slate-500">No hay bloqueos registrados.</td></tr>
+                ) : (
+                  blocks.map((block) => (
+                    <tr key={block.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <CalendarIcon className="w-4 h-4 text-slate-400 mr-2" />
+                          <span className="font-medium text-slate-900 dark:text-white">
+                            {new Date(block.startTime).toLocaleDateString('es-AR')}
+                          </span>
+                          <span className="ml-2 text-slate-500">
+                            {new Date(block.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} - {new Date(block.endTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center text-slate-700 dark:text-slate-300">
+                          <MapPin className="w-4 h-4 text-emerald-500 mr-2" />
+                          <span className="font-bold">{block.court?.name || 'N/A'}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
+                          {block.reason || 'Sin motivo'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge('BLOCKED')}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Fecha y Hora</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cancha</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cliente</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Monto</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                      <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-emerald-500" />
+                      Cargando historial...
+                    </td>
+                  </tr>
+                ) : filteredBookings.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                      No se encontraron turnos con estos filtros.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredBookings.filter((b: any) => b.status !== 'FIXED' && b.status !== 'BLOCKED').map((booking: any) => (
+                    <tr key={booking.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <CalendarIcon className="w-4 h-4 text-slate-400 mr-2" />
