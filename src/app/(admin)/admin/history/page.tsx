@@ -15,6 +15,7 @@ export default function HistoryPage() {
 
   const [startDate, setStartDate] = useState(pastDate.toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(futureDate.toISOString().split('T')[0]);
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,16 +52,56 @@ export default function HistoryPage() {
     }
   };
 
+  // Stats Calculation
+  const stats = {
+    total: bookings.length,
+    confirmed: bookings.filter(b => b.status === 'CONFIRMED').length,
+    fixed: bookings.filter(b => b.status === 'FIXED').length,
+    blocked: bookings.filter(b => b.status === 'BLOCKED').length,
+    cancelled: bookings.filter(b => b.status === 'CANCELLED').length,
+    pending: bookings.filter(b => b.status === 'PENDING').length,
+  };
+
+  const filteredBookings = statusFilter === 'ALL' ? bookings : bookings.filter(b => b.status === statusFilter);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            Historial de Turnos
+            Gestión de Turnos
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-            Revisá todos los turnos registrados en el sistema.
+            Revisá, filtrá y analizá todos los turnos del sistema (Fijos, Bloqueos, Confirmados).
           </p>
+        </div>
+      </div>
+
+      {/* Quick Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 transition-colors" onClick={() => setStatusFilter('ALL')}>
+            <span className="text-2xl font-black text-slate-800 dark:text-white">{stats.total}</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total</span>
+        </div>
+        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-800/50 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 transition-colors" onClick={() => setStatusFilter('CONFIRMED')}>
+            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.confirmed}</span>
+            <span className="text-[10px] font-bold text-emerald-600/70 dark:text-emerald-400/70 uppercase tracking-wider">Confirmados</span>
+        </div>
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-800/50 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setStatusFilter('FIXED')}>
+            <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{stats.fixed}</span>
+            <span className="text-[10px] font-bold text-blue-600/70 dark:text-blue-400/70 uppercase tracking-wider">Fijos</span>
+        </div>
+        <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center cursor-pointer hover:border-slate-400 transition-colors" onClick={() => setStatusFilter('BLOCKED')}>
+            <span className="text-2xl font-black text-slate-700 dark:text-slate-300">{stats.blocked}</span>
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bloqueos</span>
+        </div>
+        <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100 dark:border-amber-800/50 flex flex-col items-center justify-center cursor-pointer hover:border-amber-500 transition-colors" onClick={() => setStatusFilter('PENDING')}>
+            <span className="text-2xl font-black text-amber-600 dark:text-amber-400">{stats.pending}</span>
+            <span className="text-[10px] font-bold text-amber-600/70 dark:text-amber-400/70 uppercase tracking-wider">Pendientes</span>
+        </div>
+        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-2xl border border-red-100 dark:border-red-800/50 flex flex-col items-center justify-center cursor-pointer hover:border-red-500 transition-colors" onClick={() => setStatusFilter('CANCELLED')}>
+            <span className="text-2xl font-black text-red-600 dark:text-red-400">{stats.cancelled}</span>
+            <span className="text-[10px] font-bold text-red-600/70 dark:text-red-400/70 uppercase tracking-wider">Cancelados</span>
         </div>
       </div>
 
@@ -84,25 +125,27 @@ export default function HistoryPage() {
             onChange={(e) => setEndDate(e.target.value)}
           />
         </div>
+        <div className="w-full md:w-auto">
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Estado</label>
+          <select
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-bold"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="ALL">Todos los estados</option>
+            <option value="CONFIRMED">Confirmados</option>
+            <option value="FIXED">Abonos Fijos</option>
+            <option value="BLOCKED">Canchas Bloqueadas</option>
+            <option value="PENDING">Pendientes de Pago</option>
+            <option value="CANCELLED">Cancelados</option>
+          </select>
+        </div>
         <div className="w-full md:w-auto flex gap-2">
           <button
             onClick={loadHistory}
             className="flex-1 md:flex-none px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center"
           >
-            <Search className="w-4 h-4 mr-2" /> Buscar
-          </button>
-          <button
-            onClick={() => {
-              setStartDate('');
-              setEndDate('');
-              setTimeout(() => {
-                getHistoryBookings('', '').then(res => setBookings(res.data || []));
-              }, 100);
-            }}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors flex items-center justify-center"
-            title="Ver Todo (Sin filtro)"
-          >
-            Todo
+            <Search className="w-4 h-4 mr-2" /> Buscar Rango
           </button>
         </div>
       </div>
@@ -128,14 +171,14 @@ export default function HistoryPage() {
                     Cargando historial...
                   </td>
                 </tr>
-              ) : bookings.length === 0 ? (
+              ) : filteredBookings.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                    No se encontraron turnos en este rango de fechas.
+                    No se encontraron turnos con estos filtros.
                   </td>
                 </tr>
               ) : (
-                bookings.map((booking) => (
+                filteredBookings.map((booking: any) => (
                   <tr key={booking.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
