@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getHistoryBookings, getFixedBookings, getCourtBlocks } from '@/actions/history';
+import { getHistoryBookings } from '@/actions/history';
 import { Calendar as CalendarIcon, Search, Clock, MapPin, User, Phone, CheckCircle2, XCircle, AlertCircle, RefreshCw, Repeat } from 'lucide-react';
 
 export default function HistoryPage() {
@@ -25,15 +25,46 @@ export default function HistoryPage() {
   const loadHistory = async () => {
     setLoading(true);
     
-    const [resBookings, resFixed, resBlocks] = await Promise.all([
-      getHistoryBookings(startDate, endDate),
-      getFixedBookings(),
-      getCourtBlocks()
-    ]);
+    const res = await getHistoryBookings(startDate, endDate);
+    if (res.success && res.data) {
+      const allBookings = res.data;
+      setBookings(allBookings);
 
-    if (resBookings.success) setBookings(resBookings.data || []);
-    if (resFixed.success) setFixed(resFixed.data || []);
-    if (resBlocks.success) setBlocks(resBlocks.data || []);
+      // Calcular Abonos Fijos agrupados
+      const computedFixedMap = new Map();
+      allBookings.filter((b: any) => b.status === 'FIXED').forEach((b: any) => {
+        const date = new Date(b.startTime);
+        const time = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+        const dayOfWeek = date.getDay();
+        const key = `${b.courtId}-${b.userId}-${dayOfWeek}-${time}`;
+        
+        if (!computedFixedMap.has(key)) {
+          computedFixedMap.set(key, {
+            id: b.id,
+            dayOfWeek,
+            startTime: time,
+            endTime: new Date(b.endTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+            court: b.court,
+            user: b.user,
+            startDate: b.startTime,
+            endDate: b.startTime,
+            isActive: true,
+          });
+        } else {
+          const existing = computedFixedMap.get(key);
+          if (new Date(b.startTime) < new Date(existing.startDate)) existing.startDate = b.startTime;
+          if (new Date(b.startTime) > new Date(existing.endDate)) existing.endDate = b.startTime;
+        }
+      });
+      setFixed(Array.from(computedFixedMap.values()));
+
+      // Bloqueos (pueden ser individuales)
+      setBlocks(allBookings.filter((b: any) => b.status === 'BLOCKED'));
+    } else {
+      setBookings([]);
+      setFixed([]);
+      setBlocks([]);
+    }
 
     setLoading(false);
   };
@@ -62,11 +93,11 @@ export default function HistoryPage() {
   // Stats Calculation
   const stats = {
     total: bookings.length,
-    confirmed: bookings.filter(b => b.status === 'CONFIRMED').length,
+    confirmed: bookings.filter((b: any) => b.status === 'CONFIRMED').length,
     fixed: fixed.length,
     blocked: blocks.length,
-    cancelled: bookings.filter(b => b.status === 'CANCELLED').length,
-    pending: bookings.filter(b => b.status === 'PENDING').length,
+    cancelled: bookings.filter((b: any) => b.status === 'CANCELLED').length,
+    pending: bookings.filter((b: any) => b.status === 'PENDING').length,
   };
 
   const filteredBookings = statusFilter === 'ALL' ? bookings : bookings.filter(b => b.status === statusFilter);
