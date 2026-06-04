@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { addMinutes, format, parse, startOfDay, endOfDay, addWeeks } from 'date-fns';
 
@@ -132,6 +133,8 @@ export async function createAdminBooking(data: {
                 }
                 // (Si es FIJO y está ocupado, simplemente ignora esa semana puntual y sigue con las demás)
             }
+        }, {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
         });
 
         revalidatePath('/admin/calendar');

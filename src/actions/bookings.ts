@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/notifications';
 
@@ -112,6 +113,8 @@ export async function createBooking(data: {
           status: requireDeposit ? 'PENDING' : 'CONFIRMED',
         }
       });
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
 
     revalidatePath('/admin/calendar');
