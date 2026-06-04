@@ -105,7 +105,7 @@ async function main() {
         if (!hours) {
             for (let day = 0; day <= 6; day++) {
                 await prisma.businessHour.create({
-                    data: { courtId: court.id, dayOfWeek: day, openTime: '08:00', closeTime: '23:30', isActive: true }
+                    data: { courtId: court.id, dayOfWeek: day, openTime: '08:00', closeTime: '23:30' }
                 });
             }
         }
