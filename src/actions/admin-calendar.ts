@@ -23,34 +23,103 @@ export async function getAdminCalendarData(courtId: string, dateStr: string) {
         for (const court of courts) {
             const businessHour = await prisma.businessHour.findFirst({ where: { courtId: court.id, dayOfWeek } });
 
+            const startOfD = startOfDay(date);
+            const endOfD = endOfDay(date);
+
             const bookings = await prisma.booking.findMany({
                 where: {
                     courtId: court.id,
-                    startTime: { gte: startOfDay(date), lte: endOfDay(date) },
+                    startTime: { gte: startOfD, lte: endOfD },
                     status: { not: 'CANCELLED' }
                 },
                 include: { user: true }
             });
 
+            const fixedBookings = await prisma.fixedBooking.findMany({
+                where: {
+                    courtId: court.id,
+                    dayOfWeek,
+                    isActive: true,
+                    startDate: { lte: endOfD },
+                    endDate: { gte: startOfD },
+                },
+                include: { user: true }
+            });
+
+            const courtBlocks = await prisma.courtBlock.findMany({
+                where: {
+                    courtId: court.id,
+                    startTime: { lte: endOfD },
+                    endTime: { gte: startOfD },
+                },
+            });
+
             const slots = [];
             if (businessHour) {
-                let current = parse(businessHour.openTime, 'HH:mm', date);
-                const end = parse(businessHour.closeTime, 'HH:mm', date);
+                const [openHour, openMin] = businessHour.openTime.split(':').map(Number);
+                const [closeHour, closeMin] = businessHour.closeTime.split(':').map(Number);
+                let currentMinutes = openHour * 60 + openMin;
+                const endMinutes = closeHour * 60 + closeMin;
+                const duration = businessHour.slotDuration;
 
-                while (current < end) {
-                    const slotStart = current;
-                    const slotEnd = addMinutes(current, businessHour.slotDuration);
-                    const timeStr = format(slotStart, 'HH:mm');
+                while (currentMinutes + duration <= endMinutes) {
+                    const slotStartH = Math.floor(currentMinutes / 60).toString().padStart(2, '0');
+                    const slotStartM = (currentMinutes % 60).toString().padStart(2, '0');
+                    const slotEndMins = currentMinutes + duration;
+                    const slotEndH = Math.floor(slotEndMins / 60).toString().padStart(2, '0');
+                    const slotEndM = (slotEndMins % 60).toString().padStart(2, '0');
 
-                    const booking = bookings.find(b => format(new Date(b.startTime), 'HH:mm') === timeStr);
+                    const timeStr = `${slotStartH}:${slotStartM}`;
+                    const endTimeStr = `${slotEndH}:${slotEndM}`;
+
+                    const slotStartTime = new Date(`${dateStr}T${timeStr}:00`).getTime();
+                    const slotEndTime = new Date(`${dateStr}T${endTimeStr}:00`).getTime();
+
+                    // Buscar reservas normales que se solapen
+                    const booking = bookings.find(b => {
+                        const bStart = new Date(b.startTime).getTime();
+                        const bEnd = new Date(b.endTime).getTime();
+                        return slotStartTime < bEnd && slotEndTime > bStart;
+                    });
+
+                    // Buscar abonos fijos que se solapen
+                    const fixed = fixedBookings.find(fb => {
+                        const [fbStartH, fbStartM] = fb.startTime.split(':').map(Number);
+                        const [fbEndH, fbEndM] = fb.endTime.split(':').map(Number);
+                        const fbStartMin = fbStartH * 60 + fbStartM;
+                        const fbEndMin = fbEndH * 60 + fbEndM;
+                        return currentMinutes < fbEndMin && slotEndMins > fbStartMin;
+                    });
+
+                    // Buscar bloqueos que se solapen
+                    const block = courtBlocks.find(cb => {
+                        const cbStart = new Date(cb.startTime).getTime();
+                        const cbEnd = new Date(cb.endTime).getTime();
+                        return slotStartTime < cbEnd && slotEndTime > cbStart;
+                    });
+
+                    let finalStatus = 'FREE';
+                    let finalBooking = null;
+
+                    if (booking) {
+                        finalStatus = booking.status;
+                        finalBooking = booking;
+                    } else if (fixed) {
+                        finalStatus = 'FIXED';
+                        finalBooking = { id: fixed.id, user: fixed.user };
+                    } else if (block) {
+                        finalStatus = 'BLOCKED';
+                        finalBooking = { id: block.id, user: { name: block.reason || 'Bloqueo' } };
+                    }
 
                     slots.push({
                         time: timeStr,
-                        endTime: format(slotEnd, 'HH:mm'),
-                        status: booking ? booking.status : 'FREE',
-                        booking: booking || null,
+                        endTime: endTimeStr,
+                        status: finalStatus,
+                        booking: finalBooking,
                     });
-                    current = slotEnd;
+
+                    currentMinutes += duration;
                 }
             }
 
