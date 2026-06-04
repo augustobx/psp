@@ -86,23 +86,28 @@ export default function MisTurnosClient() {
             {bookings.length > 0 && (
                 <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Tus Reservas</h2>
-                    {bookings.map((booking) => (
-                        <div key={booking.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm relative overflow-hidden">
-                            {booking.status === 'CONFIRMED' && <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>}
+                    {bookings.map((booking) => {
+                        const isPlayed = booking.isPast && booking.status === 'CONFIRMED';
+                        return (
+                        <div key={booking.id} className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm relative overflow-hidden ${isPlayed ? 'opacity-70' : ''}`}>
+                            {booking.status === 'CONFIRMED' && !isPlayed && <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>}
+                            {isPlayed && <div className="absolute top-0 left-0 w-1 h-full bg-slate-400"></div>}
                             {booking.status === 'PENDING' && <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500"></div>}
                             {booking.status === 'CANCELLED' && <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>}
                             
                             <div className="flex justify-between items-start mb-3 pl-2">
                                 <div className="flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-blue-500" />
-                                    <span className="font-bold text-slate-900 dark:text-white">{booking.courtName}</span>
+                                    <MapPin className={`w-4 h-4 ${isPlayed ? 'text-slate-400' : 'text-blue-500'}`} />
+                                    <span className={`font-bold ${isPlayed ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}`}>{booking.courtName}</span>
                                 </div>
                                 <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                                    isPlayed ? 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' :
                                     booking.status === 'CONFIRMED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                                     booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                                     'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                                 }`}>
-                                    {booking.status === 'CONFIRMED' ? 'CONFIRMADO' :
+                                    {isPlayed ? 'YA JUGADO' :
+                                     booking.status === 'CONFIRMED' ? 'CONFIRMADO' :
                                      booking.status === 'PENDING' ? 'PENDIENTE' : 'CANCELADO'}
                                 </span>
                             </div>
@@ -127,7 +132,8 @@ export default function MisTurnosClient() {
                                 </div>
                             )}
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

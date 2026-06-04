@@ -172,13 +172,15 @@ export async function getBookingsByPhone(phone: string) {
         });
 
         // Formateamos las reservas para devolver lo necesario al frontend
+        const now = new Date();
         const data = bookings.map(b => ({
             id: b.id,
             courtName: b.court?.name || 'Cancha',
             date: b.startTime.toLocaleDateString('es-AR'),
             time: b.startTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
             status: b.status,
-            totalAmount: b.totalAmount.toNumber()
+            totalAmount: b.totalAmount.toNumber(),
+            isPast: b.endTime < now
         }));
 
         return { success: true, data };
