@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getHistoryBookings } from '@/actions/history';
+import { getHistoryBookings, getFixedBookings } from '@/actions/history';
 import { Calendar as CalendarIcon, Search, Clock, MapPin, User, Phone, CheckCircle2, XCircle, AlertCircle, RefreshCw, Repeat } from 'lucide-react';
 
 export default function HistoryPage() {
@@ -56,7 +56,15 @@ export default function HistoryPage() {
           if (new Date(b.startTime) > new Date(existing.endDate)) existing.endDate = b.startTime;
         }
       });
-      setFixed(Array.from(computedFixedMap.values()));
+
+      // Traer los fijos reales de la tabla FixedBooking
+      const fixedRes = await getFixedBookings();
+      let realFixed: any[] = [];
+      if (fixedRes.success && fixedRes.data) {
+        realFixed = fixedRes.data;
+      }
+      
+      setFixed([...Array.from(computedFixedMap.values()), ...realFixed]);
 
       // Bloqueos (pueden ser individuales)
       setBlocks(allBookings.filter((b: any) => b.status === 'BLOCKED'));
