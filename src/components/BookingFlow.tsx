@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Calendar as CalendarIcon, MapPin, Clock, ArrowRight, CheckCircle2, User, Phone, Lock, Loader2, CreditCard } from 'lucide-react';
 import { getAvailableSlots } from '@/actions/public-bookings';
 import { createBooking } from '@/actions/bookings';
@@ -22,7 +22,8 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
   const clubName = sysSettings?.clubName || "Padel Club";
   const sportEmoji = sysSettings?.sportEmoji || "🎾";
 
-  // ESTADOS
+  // ESTADOS Y REFS
+  const slotsRef = useRef<HTMLDivElement>(null);
   const [showSplash, setShowSplash] = useState(true);
   const [showBubble, setShowBubble] = useState(sysSettings?.bubbleActive || false);
 
@@ -61,6 +62,11 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
     if (selectedCourt && selectedDate) {
       setLoading(true);
       const dateStr = new Date(selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+      // Auto-scroll a la sección de horarios
+      setTimeout(() => {
+        slotsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
 
       getAvailableSlots(selectedCourt, dateStr).then(res => {
         if (res.success && res.data) {
@@ -205,8 +211,8 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
                   <button
                     key={court.id}
                     onClick={() => setSelectedCourt(court.id)}
-                    className={`p-4 rounded-2xl text-left transition-all border shadow-sm flex flex-col ${selectedCourt === court.id
-                      ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100'
+                    className={`p-4 rounded-2xl text-left transition-all border shadow-sm flex flex-col active:scale-[0.98] ${selectedCourt === court.id
+                      ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-100 transform scale-[1.02]'
                       : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300'
                       }`}
                   >
@@ -219,7 +225,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
 
             {/* Horarios FOMO (Grilla Visual de Ocupación) */}
             {selectedCourt && (
-              <div className="space-y-3 animate-in fade-in duration-300">
+              <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500" ref={slotsRef}>
                 <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                   <div className="flex items-center"><Clock className="w-4 h-4 mr-2 text-emerald-500" /> Horarios</div>
                   <div className="flex items-center space-x-2 text-[10px] font-bold text-slate-400 uppercase">
@@ -241,10 +247,10 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
                           key={idx}
                           disabled={!isAvailable}
                           onClick={() => setSelectedSlot(slot.time)}
-                          className={`relative p-3.5 rounded-2xl text-center font-bold text-sm transition-all border overflow-hidden flex flex-col items-center justify-center
+                          className={`relative p-3.5 rounded-2xl text-center font-bold text-sm transition-all border overflow-hidden flex flex-col items-center justify-center active:scale-[0.98]
                             ${isAvailable
                               ? isSelected
-                                ? 'bg-slate-900 text-white border-slate-900 ring-4 ring-slate-900/20 shadow-md'
+                                ? 'bg-slate-900 text-white border-slate-900 ring-4 ring-slate-900/20 shadow-md transform scale-[1.02]'
                                 : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 shadow-sm hover:border-emerald-500 hover:text-emerald-600'
                               : 'bg-slate-50 dark:bg-slate-800/40 text-slate-400 border-slate-100 dark:border-slate-800 cursor-not-allowed'
                             }
