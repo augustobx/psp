@@ -1,12 +1,14 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
-const prisma = new PrismaClient();
+const connectionString = (process.env.DATABASE_URL || '').replace('mysql://', 'mariadb://');
+const adapter = new PrismaMariaDb(connectionString);
+const prisma = new PrismaClient({ adapter });
 
 async function cleanDatabase() {
-    console.log('Iniciando limpieza de la base de datos (manteniendo configuraciones)...');
-
+    console.log('Iniciando limpieza profunda de la base de datos...');
     try {
-        // 1. Limpiar datos transaccionales de Torneos
         console.log('- Borrando datos de Torneos...');
         await prisma.tournamentMatch.deleteMany();
         await prisma.tournamentGroupTeam.deleteMany();
@@ -15,18 +17,14 @@ async function cleanDatabase() {
         await prisma.tournamentCategory.deleteMany();
         await prisma.tournament.deleteMany();
 
-        // 2. Limpiar Reservas y Bloqueos
         console.log('- Borrando Reservas y Bloqueos...');
         await prisma.booking.deleteMany();
         await prisma.fixedBooking.deleteMany();
         await prisma.courtBlock.deleteMany();
 
-        // 3. Limpiar Gastos (Expenses)
         console.log('- Borrando Gastos...');
         await prisma.expense.deleteMany();
 
-        // 4. Limpiar Usuarios (Excepto Administradores)
-        // Mantener a los administradores ya que suelen ser parte de la configuración base
         console.log('- Borrando Usuarios (manteniendo Administradores)...');
         await prisma.user.deleteMany({
             where: {
@@ -36,8 +34,20 @@ async function cleanDatabase() {
             }
         });
 
-        // NOTA: No borramos Courts, BusinessHour, Setting, ni SystemSetting
-        // ya que son la configuración estructural del sistema.
+        console.log('- Limpiando Canchas duplicadas (sin horarios comerciales)...');
+        // Las canchas creadas por error en la migración anterior no tienen BusinessHour
+        const invalidCourts = await prisma.court.findMany({
+            where: {
+                businessHours: {
+                    none: {}
+                }
+            }
+        });
+        
+        for (const court of invalidCourts) {
+            await prisma.court.delete({ where: { id: court.id } });
+        }
+        console.log(`  Se eliminaron ${invalidCourts.length} canchas duplicadas.`);
 
         console.log('✅ Limpieza completada exitosamente.');
     } catch (error) {
