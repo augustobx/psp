@@ -8,8 +8,8 @@ import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/notifications';
 // 1. Obtener reservas por día (Para el Panel de Admin)
 export async function getBookingsByDate(dateStr: string) {
   try {
-    const startOfDay = new Date(`${dateStr}T00:00:00`);
-    const endOfDay = new Date(`${dateStr}T23:59:59`);
+    const startOfDay = new Date(`${dateStr}T00:00:00-03:00`);
+    const endOfDay = new Date(`${dateStr}T23:59:59.999-03:00`);
 
     const bookings = await prisma.booking.findMany({
       where: {
@@ -43,9 +43,16 @@ export async function createBooking(data: {
   phone: string;
 }) {
   try {
-    const startTime = new Date(`${data.date}T${data.time}:00`);
-    const dayOfWeek = startTime.getDay();
-
+    // We need to parse time properly, even if time is wrapped around. Wait, public-bookings returns the actual next-day time if wrapped, e.g. "00:30". But we need to use the right date.
+    // However, if the time is wrapped (e.g. 00:30) and date is the selected visual day, we should ensure the booking logic handles it. 
+    // Actually, in public-bookings, the returned `time` is simply the wrapped "00:30" string. The user selects the `date` visually.
+    // If we receive time "00:30" for a business that opens at 09:00, it's obviously the next day.
+    const [h, m] = data.time.split(':').map(Number);
+    let finalDateStr = data.date;
+    // Simple heuristic: If hour is very early (e.g., < 6) but it's part of the evening schedule, it should belong to the next day.
+    // We can fetch business hour to verify.
+    const tempStartTime = new Date(`${data.date}T00:00:00-03:00`);
+    const dayOfWeek = tempStartTime.getDay();
     const businessHour = await prisma.businessHour.findFirst({
       where: { courtId: data.courtId, dayOfWeek }
     });
@@ -53,6 +60,16 @@ export async function createBooking(data: {
     if (!businessHour) {
       return { success: false, error: 'La cancha no está disponible ese día.' };
     }
+
+    const [openH] = businessHour.openTime.split(':').map(Number);
+    if (h < openH && h < 6) { 
+        // It's the next day
+        tempStartTime.setDate(tempStartTime.getDate() + 1);
+        finalDateStr = `${tempStartTime.getFullYear()}-${String(tempStartTime.getMonth() + 1).padStart(2, '0')}-${String(tempStartTime.getDate()).padStart(2, '0')}`;
+    }
+
+    const startTime = new Date(`${finalDateStr}T${data.time}:00-03:00`);
+
 
     const endTime = new Date(startTime.getTime() + businessHour.slotDuration * 60000);
 

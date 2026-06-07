@@ -17,8 +17,8 @@ export async function getPublicCourts() {
 
 export async function getAvailableSlots(courtId: string, dateStr: string) {
     try {
-        const targetDate = new Date(`${dateStr}T00:00:00`);
-        const dayOfWeek = targetDate.getDay();
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 
         // 1. Buscar horario de negocio para esta cancha y día
         const businessHour = await prisma.businessHour.findFirst({
@@ -30,8 +30,9 @@ export async function getAvailableSlots(courtId: string, dateStr: string) {
         }
 
         // 2. Buscar reservas existentes del día (no canceladas)
-        const startOfDay = new Date(`${dateStr}T00:00:00`);
-        const endOfDay = new Date(`${dateStr}T23:59:59.999`);
+        const startOfDay = new Date(`${dateStr}T00:00:00-03:00`);
+        const endOfDay = new Date(`${dateStr}T23:59:59.999-03:00`);
+        endOfDay.setDate(endOfDay.getDate() + 1); // Allow slots crossing midnight up to the next day
 
         const existingBookings = await prisma.booking.findMany({
             where: {
@@ -67,20 +68,38 @@ export async function getAvailableSlots(courtId: string, dateStr: string) {
         const duration = businessHour.slotDuration;
 
         let currentMinutes = openHour * 60 + openMin;
-        const endMinutes = closeHour * 60 + closeMin;
+        let endMinutes = closeHour * 60 + closeMin;
+        if (endMinutes <= currentMinutes) {
+            endMinutes += 24 * 60;
+        }
         const now = new Date();
 
         const slotsData: { time: string; status: string }[] = [];
 
         while (currentMinutes + duration <= endMinutes) {
-            const slotStartH = Math.floor(currentMinutes / 60).toString().padStart(2, '0');
-            const slotStartM = (currentMinutes % 60).toString().padStart(2, '0');
-            const timeStr = `${slotStartH}:${slotStartM}`;
+            const formatTimeAndDate = (minsTotal: number, baseDateStr: string) => {
+                const daysToAdd = Math.floor(minsTotal / (24 * 60));
+                const minsInDay = minsTotal % (24 * 60);
+                const h = Math.floor(minsInDay / 60).toString().padStart(2, '0');
+                const m = (minsInDay % 60).toString().padStart(2, '0');
+                
+                let finalDateStr = baseDateStr;
+                if (daysToAdd > 0) {
+                   const d = new Date(`${baseDateStr}T00:00:00-03:00`);
+                   d.setDate(d.getDate() + daysToAdd);
+                   finalDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                }
+                return { timeStr: `${h}:${m}`, dateStr: finalDateStr };
+            };
 
+            const startInfo = formatTimeAndDate(currentMinutes, dateStr);
+            const endInfo = formatTimeAndDate(currentMinutes + duration, dateStr);
+
+            const timeStr = startInfo.timeStr;
+
+            const slotStartTime = new Date(`${startInfo.dateStr}T${startInfo.timeStr}:00-03:00`);
+            const slotEndTime = new Date(`${endInfo.dateStr}T${endInfo.timeStr}:00-03:00`);
             const slotEndMinutes = currentMinutes + duration;
-
-            const slotStartTime = new Date(`${dateStr}T${timeStr}:00`);
-            const slotEndTime = new Date(`${dateStr}T${Math.floor(slotEndMinutes / 60).toString().padStart(2, '0')}:${(slotEndMinutes % 60).toString().padStart(2, '0')}:00`);
 
             // ¿El slot ya pasó? (solo para hoy)
             if (slotStartTime <= now) {
@@ -106,7 +125,8 @@ export async function getAvailableSlots(courtId: string, dateStr: string) {
                 const [fbStartH, fbStartM] = fb.startTime.split(':').map(Number);
                 const [fbEndH, fbEndM] = fb.endTime.split(':').map(Number);
                 const fbStartMin = fbStartH * 60 + fbStartM;
-                const fbEndMin = fbEndH * 60 + fbEndM;
+                let fbEndMin = fbEndH * 60 + fbEndM;
+                if (fbEndMin <= fbStartMin) fbEndMin += 24 * 60;
                 return currentMinutes < fbEndMin && slotEndMinutes > fbStartMin;
             });
 
@@ -133,6 +153,7 @@ export async function getAvailableSlots(courtId: string, dateStr: string) {
             slotsData.push({ time: timeStr, status: 'AVAILABLE' });
             currentMinutes += duration;
         }
+
 
         return { success: true, data: slotsData };
     } catch (error) {
