@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import PushConfig from "@/components/PushConfig";
 
 export default async function SettingsPage() {
     let settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
@@ -146,6 +147,9 @@ export default async function SettingsPage() {
 
                     {/* PAGOS, NOTIFICACIONES Y BURBUJA */}
                     <div className="space-y-6">
+                        {/* AQUI INSERTAMOS EL NUEVO COMPONENTE PUSHCONFIG QUE ES DE CLIENTE */}
+                        <PushConfig />
+
                         <Card>
                             <CardHeader>
                                 <CardTitle>Pagos y API de Meta</CardTitle>
