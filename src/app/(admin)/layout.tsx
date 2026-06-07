@@ -1,4 +1,5 @@
 import AdminSidebar from "@/components/AdminSidebar";
+import PushSubscriber from "@/components/PushSubscriber";
 
 export default function AdminLayout({
   children,
@@ -9,6 +10,7 @@ export default function AdminLayout({
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* El Sidebar maneja su propia lógica responsiva (Menu hamburguesa en mobile) */}
       <AdminSidebar />
+      <PushSubscriber />
 
       {/* Contenido Principal */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">

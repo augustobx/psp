@@ -138,6 +138,14 @@ export async function createBooking(data: {
     revalidatePath('/admin/dashboard');
     revalidatePath('/reservas');
 
+    // === NOTIFICACIONES PUSH PARA ADMINS ===
+    const push = await import('@/lib/push');
+    push.sendAdminPushNotification(
+      '🎾 Nuevo Turno Reservado',
+      `${data.name} ha reservado el ${data.date} a las ${data.time} hs.`,
+      '/admin/calendar'
+    ).catch(err => console.error('Error enviando push:', err));
+
     // === NOTIFICACIONES WHATSAPP AL CLIENTE (Y AL ADMIN) ===
     // CORRECCIÓN: Importamos el módulo completo. Ya no disparamos al admin a lo loco.
     const notifications = await import('@/lib/whatsapp/notifications');

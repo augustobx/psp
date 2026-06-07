@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sistema PSP - Reservas y Torneos",
   description: "Plataforma de gestión deportiva, reservas de canchas y organización de torneos.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

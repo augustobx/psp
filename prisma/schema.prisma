@@ -56,10 +56,12 @@ model User {
   fixedBookings   FixedBooking[]
   teamsAsPlayer1  TournamentTeam[]   @relation("Player1")
   teamsAsPlayer2  TournamentTeam[]   @relation("Player2")
+  pushSubscriptions PushSubscription[]
   
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 }
+
 
 model Court {
   id              String             @id @default(uuid())
@@ -105,11 +107,14 @@ model Booking {
   paymentId       String?       // ID MercadoPago
   totalAmount     Decimal       @db.Decimal(10, 2)
   description     String?
+  fixedBookingId  String?
+  fixedBooking    FixedBooking? @relation(fields: [fixedBookingId], references: [id], onDelete: SetNull)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   @@index([courtId, startTime, endTime])
 }
+
 
 model FixedBooking {
   id              String   @id @default(uuid())
@@ -124,6 +129,8 @@ model FixedBooking {
   endDate         DateTime // Fin vigencia abono
   isActive        Boolean  @default(true)
   
+  bookings        Booking[]
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -142,6 +149,17 @@ model CourtBlock {
 
   @@index([courtId, startTime, endTime])
 }
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  createdAt DateTime @default(now())
+}
+
 
 // ==========================================
 // FINANZAS Y CONFIGURACIÓN

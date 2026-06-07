@@ -192,12 +192,13 @@ export async function createAdminBooking(data: {
 
         // Transacción para insertar las reservas
         await prisma.$transaction(async (tx) => {
+            let newFixedBookingId: string | null = null;
             // Si es FIJO, guardamos el abono maestro en FixedBooking
             if (data.type === 'FIJO') {
                 const [year, month, day] = data.dateStr.split('-').map(Number);
                 const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 
-                await tx.fixedBooking.create({
+                const fb = await tx.fixedBooking.create({
                     data: {
                         courtId: data.courtId,
                         userId: user!.id,
@@ -209,6 +210,7 @@ export async function createAdminBooking(data: {
                         isActive: true
                     }
                 });
+                newFixedBookingId = fb.id;
             }
 
             for (let i = 0; i < weeksToGenerate; i++) {
@@ -234,8 +236,10 @@ export async function createAdminBooking(data: {
                             endTime,
                             status: status as any,
                             totalAmount: 0,
+                            fixedBookingId: newFixedBookingId,
                         }
                     });
+
                 } else if (data.type !== 'FIJO') {
                     // Si es una reserva simple/bloqueo y está ocupado, tira error
                     throw new Error('SLOT_TAKEN');

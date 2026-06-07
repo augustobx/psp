@@ -9,7 +9,7 @@ import { LayoutDashboard, Calendar, MapPin, CreditCard, Settings, Menu, X, LogOu
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard' },
   { name: 'Diario', icon: Calendar, href: '/admin/calendar' },
-  { name: 'Mensual', icon: CalendarDays, href: '/admin/mensual' },
+  { name: 'Abonos Fijos', icon: CalendarDays, href: '/admin/abonos' },
   { name: 'Historial', icon: ClipboardList, href: '/admin/history' },
   { name: 'Canchas', icon: MapPin, href: '/admin/courts' },
   { name: 'Gastos', icon: CreditCard, href: '/admin/expenses' },
