@@ -25,6 +25,7 @@ export async function getAdminCalendarData(courtId: string, dateStr: string) {
 
             const startOfD = new Date(`${dateStr}T00:00:00-03:00`);
             const endOfD = new Date(`${dateStr}T23:59:59.999-03:00`);
+            endOfD.setDate(endOfD.getDate() + 1); // Allow slots crossing midnight up to the next day
 
             const bookings = await prisma.booking.findMany({
                 where: {
@@ -59,21 +60,36 @@ export async function getAdminCalendarData(courtId: string, dateStr: string) {
                 const [openHour, openMin] = businessHour.openTime.split(':').map(Number);
                 const [closeHour, closeMin] = businessHour.closeTime.split(':').map(Number);
                 let currentMinutes = openHour * 60 + openMin;
-                const endMinutes = closeHour * 60 + closeMin;
+                let endMinutes = closeHour * 60 + closeMin;
+                if (endMinutes <= currentMinutes) {
+                    endMinutes += 24 * 60;
+                }
                 const duration = businessHour.slotDuration;
 
                 while (currentMinutes + duration <= endMinutes) {
-                    const slotStartH = Math.floor(currentMinutes / 60).toString().padStart(2, '0');
-                    const slotStartM = (currentMinutes % 60).toString().padStart(2, '0');
-                    const slotEndMins = currentMinutes + duration;
-                    const slotEndH = Math.floor(slotEndMins / 60).toString().padStart(2, '0');
-                    const slotEndM = (slotEndMins % 60).toString().padStart(2, '0');
+                    const formatTimeAndDate = (minsTotal: number, baseDateStr: string) => {
+                        const daysToAdd = Math.floor(minsTotal / (24 * 60));
+                        const minsInDay = minsTotal % (24 * 60);
+                        const h = Math.floor(minsInDay / 60).toString().padStart(2, '0');
+                        const m = (minsInDay % 60).toString().padStart(2, '0');
+                        
+                        let finalDateStr = baseDateStr;
+                        if (daysToAdd > 0) {
+                           const d = new Date(`${baseDateStr}T00:00:00-03:00`);
+                           d.setDate(d.getDate() + daysToAdd);
+                           finalDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        }
+                        return { timeStr: `${h}:${m}`, dateStr: finalDateStr };
+                    };
 
-                    const timeStr = `${slotStartH}:${slotStartM}`;
-                    const endTimeStr = `${slotEndH}:${slotEndM}`;
+                    const startInfo = formatTimeAndDate(currentMinutes, dateStr);
+                    const endInfo = formatTimeAndDate(currentMinutes + duration, dateStr);
 
-                    const slotStartTime = new Date(`${dateStr}T${timeStr}:00-03:00`).getTime();
-                    const slotEndTime = new Date(`${dateStr}T${endTimeStr}:00-03:00`).getTime();
+                    const timeStr = startInfo.timeStr;
+                    const endTimeStr = endInfo.timeStr;
+
+                    const slotStartTime = new Date(`${startInfo.dateStr}T${startInfo.timeStr}:00-03:00`).getTime();
+                    const slotEndTime = new Date(`${endInfo.dateStr}T${endInfo.timeStr}:00-03:00`).getTime();
 
                     // Buscar reservas normales que se solapen
                     const booking = bookings.find(b => {
@@ -146,6 +162,9 @@ export async function createAdminBooking(data: {
     try {
         const baseStartTime = new Date(`${data.dateStr}T${data.startTimeStr}:00-03:00`);
         const baseEndTime = new Date(`${data.dateStr}T${data.endTimeStr}:00-03:00`);
+        if (baseEndTime <= baseStartTime) {
+            baseEndTime.setDate(baseEndTime.getDate() + 1);
+        }
         const status = data.type === 'BLOQUEO' ? 'BLOCKED' : data.type === 'FIJO' ? 'FIXED' : 'CONFIRMED';
 
         // Creamos un usuario dummy local para asociar la reserva
