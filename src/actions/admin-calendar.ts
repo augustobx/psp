@@ -99,11 +99,13 @@ export async function getAdminCalendarData(courtId: string, dateStr: string) {
                     });
 
                     // Buscar abonos fijos que se solapen
+                    const slotEndMins = currentMinutes + duration;
                     const fixed = fixedBookings.find(fb => {
                         const [fbStartH, fbStartM] = fb.startTime.split(':').map(Number);
                         const [fbEndH, fbEndM] = fb.endTime.split(':').map(Number);
                         const fbStartMin = fbStartH * 60 + fbStartM;
-                        const fbEndMin = fbEndH * 60 + fbEndM;
+                        let fbEndMin = fbEndH * 60 + fbEndM;
+                        if (fbEndMin <= fbStartMin) fbEndMin += 24 * 60; // Handle fixed booking midnight cross too
                         return currentMinutes < fbEndMin && slotEndMins > fbStartMin;
                     });
 
