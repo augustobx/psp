@@ -22,7 +22,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export default function PushSubscriber() {
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.workbox !== undefined) {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && (window as any).workbox !== undefined) {
       // Setup push notifications
       const setupPush = async () => {
         try {

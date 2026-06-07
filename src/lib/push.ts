@@ -26,7 +26,7 @@ export async function sendAdminPushNotification(title: string, body: string, url
 
     const payload = JSON.stringify({ title, body, url });
 
-    const promises = subscriptions.map(async (sub) => {
+    const promises = subscriptions.map(async (sub: any) => {
       const pushSub = {
         endpoint: sub.endpoint,
         keys: {
