@@ -27,7 +27,7 @@ export default function PushConfig() {
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && (window as any).workbox !== undefined) {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(reg => {
         setSwRegistration(reg);
         reg.pushManager.getSubscription().then(sub => {
