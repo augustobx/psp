@@ -3,10 +3,11 @@
 import { prisma } from '@/lib/prisma';
 
 export async function getDashboardStats() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nowART = new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" });
+    const d = new Date(nowART);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const today = new Date(`${dateStr}T00:00:00-03:00`);
+    const tomorrow = new Date(`${dateStr}T23:59:59.999-03:00`);
 
     try {
         const [
@@ -48,10 +49,11 @@ export async function getDashboardStats() {
 }
 
 export async function getTodaySnapshot() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nowART = new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" });
+    const d = new Date(nowART);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const today = new Date(`${dateStr}T00:00:00-03:00`);
+    const tomorrow = new Date(`${dateStr}T23:59:59.999-03:00`);
 
     try {
         const bookings = await prisma.booking.findMany({

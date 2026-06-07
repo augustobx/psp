@@ -19,7 +19,7 @@ export default async function AdminDashboard() {
 
   // Formateo de fecha actual
   const today = new Date();
-  const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Argentina/Buenos_Aires' };
   const formattedDate = today.toLocaleDateString('es-AR', dateOptions);
   
   // Saludo dinámico
@@ -145,7 +145,7 @@ export default async function AdminDashboard() {
                     <TableCell className="font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-4 h-4 text-slate-400" />
-                        {booking.startTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                        {booking.startTime.toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">

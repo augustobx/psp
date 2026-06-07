@@ -7,8 +7,8 @@ export async function getHistoryBookings(startDateStr?: string, endDateStr?: str
     let whereClause: any = {};
 
     if (startDateStr && endDateStr) {
-      const startOfDay = new Date(`${startDateStr}T00:00:00`);
-      const endOfDay = new Date(`${endDateStr}T23:59:59.999`);
+      const startOfDay = new Date(`${startDateStr}T00:00:00-03:00`);
+      const endOfDay = new Date(`${endDateStr}T23:59:59.999-03:00`);
       
       whereClause.startTime = {
         gte: startOfDay,

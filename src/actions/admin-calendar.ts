@@ -7,8 +7,8 @@ import { addMinutes, format, parse, startOfDay, endOfDay, addWeeks } from 'date-
 
 export async function getAdminCalendarData(courtId: string, dateStr: string) {
     try {
-        const date = new Date(`${dateStr}T00:00:00`);
-        const dayOfWeek = date.getDay();
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 
         // 1. Determinar qué canchas buscar
         const courtsQuery = courtId === 'ALL' ? { isActive: true } : { id: courtId };
@@ -23,8 +23,8 @@ export async function getAdminCalendarData(courtId: string, dateStr: string) {
         for (const court of courts) {
             const businessHour = await prisma.businessHour.findFirst({ where: { courtId: court.id, dayOfWeek } });
 
-            const startOfD = startOfDay(date);
-            const endOfD = endOfDay(date);
+            const startOfD = new Date(`${dateStr}T00:00:00-03:00`);
+            const endOfD = new Date(`${dateStr}T23:59:59.999-03:00`);
 
             const bookings = await prisma.booking.findMany({
                 where: {
@@ -72,8 +72,8 @@ export async function getAdminCalendarData(courtId: string, dateStr: string) {
                     const timeStr = `${slotStartH}:${slotStartM}`;
                     const endTimeStr = `${slotEndH}:${slotEndM}`;
 
-                    const slotStartTime = new Date(`${dateStr}T${timeStr}:00`).getTime();
-                    const slotEndTime = new Date(`${dateStr}T${endTimeStr}:00`).getTime();
+                    const slotStartTime = new Date(`${dateStr}T${timeStr}:00-03:00`).getTime();
+                    const slotEndTime = new Date(`${dateStr}T${endTimeStr}:00-03:00`).getTime();
 
                     // Buscar reservas normales que se solapen
                     const booking = bookings.find(b => {
@@ -144,8 +144,8 @@ export async function createAdminBooking(data: {
     clientPhone?: string;
 }) {
     try {
-        const baseStartTime = new Date(`${data.dateStr}T${data.startTimeStr}:00`);
-        const baseEndTime = new Date(`${data.dateStr}T${data.endTimeStr}:00`);
+        const baseStartTime = new Date(`${data.dateStr}T${data.startTimeStr}:00-03:00`);
+        const baseEndTime = new Date(`${data.dateStr}T${data.endTimeStr}:00-03:00`);
         const status = data.type === 'BLOQUEO' ? 'BLOCKED' : data.type === 'FIJO' ? 'FIXED' : 'CONFIRMED';
 
         // Creamos un usuario dummy local para asociar la reserva
@@ -171,6 +171,25 @@ export async function createAdminBooking(data: {
 
         // Transacción para insertar las reservas
         await prisma.$transaction(async (tx) => {
+            // Si es FIJO, guardamos el abono maestro en FixedBooking
+            if (data.type === 'FIJO') {
+                const [year, month, day] = data.dateStr.split('-').map(Number);
+                const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+
+                await tx.fixedBooking.create({
+                    data: {
+                        courtId: data.courtId,
+                        userId: user!.id,
+                        dayOfWeek,
+                        startTime: data.startTimeStr,
+                        endTime: data.endTimeStr,
+                        startDate: baseStartTime,
+                        endDate: addWeeks(baseStartTime, weeksToGenerate - 1),
+                        isActive: true
+                    }
+                });
+            }
+
             for (let i = 0; i < weeksToGenerate; i++) {
                 const startTime = addWeeks(baseStartTime, i);
                 const endTime = addWeeks(baseEndTime, i);
