@@ -10,6 +10,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    if (userId === 'ADMIN') {
+      // Ensure dummy user exists to avoid ForeignKeyConstraintViolation
+      await prisma.user.upsert({
+        where: { email: 'admin_push@system.local' },
+        update: {},
+        create: {
+          id: 'ADMIN',
+          email: 'admin_push@system.local',
+          name: 'System Admin',
+          role: 'ADMIN'
+        }
+      });
+    }
+
     // Upsert subscription
     await prisma.pushSubscription.create({
       data: {
