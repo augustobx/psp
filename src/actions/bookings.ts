@@ -143,7 +143,7 @@ export async function createBooking(data: {
     push.sendAdminPushNotification(
       '🎾 Nuevo Turno Reservado',
       `${data.name} ha reservado el ${data.date} a las ${data.time} hs.`,
-      '/admin/calendar'
+      `/admin/calendar?date=${data.date}&highlight=${booking.id}`
     ).catch(err => console.error('Error enviando push:', err));
 
     // === NOTIFICACIONES WHATSAPP AL CLIENTE (Y AL ADMIN) ===

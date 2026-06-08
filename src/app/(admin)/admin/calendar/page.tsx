@@ -4,7 +4,7 @@ import AdminCalendar from "@/components/AdminCalendar";
 export default async function CalendarPage({
     searchParams
 }: {
-    searchParams: Promise<{ date?: string }>
+    searchParams: Promise<{ date?: string, highlight?: string }>
 }) {
     const params = await searchParams;
     const response = await getCourts();
@@ -26,7 +26,7 @@ export default async function CalendarPage({
             </div>
 
             {activeCourts.length > 0 ? (
-                <AdminCalendar courts={activeCourts} initialDate={params.date} />
+                <AdminCalendar courts={activeCourts} initialDate={params.date} highlightBookingId={params.highlight} />
             ) : (
                 <div className="text-center py-20 bg-white dark:bg-slate-900 border-2 border-dashed rounded-3xl">
                     <p className="text-slate-500 font-bold text-lg">No hay canchas activas configuradas.</p>

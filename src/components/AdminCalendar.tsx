@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export default function AdminCalendar({ courts, initialDate, hideToolbar = false }: { courts: any[], initialDate?: string, hideToolbar?: boolean }) {
+export default function AdminCalendar({ courts, initialDate, highlightBookingId, hideToolbar = false }: { courts: any[], initialDate?: string, highlightBookingId?: string, hideToolbar?: boolean }) {
     const [selectedCourt, setSelectedCourt] = useState('ALL');
     const [currentDate, setCurrentDate] = useState(initialDate ? new Date(`${initialDate}T12:00:00`) : new Date());
     const [gridData, setGridData] = useState<any[]>([]);
@@ -29,6 +29,17 @@ export default function AdminCalendar({ courts, initialDate, hideToolbar = false
     };
 
     useEffect(() => { loadData(); }, [selectedCourt, currentDate]);
+
+    useEffect(() => {
+        if (!loading && highlightBookingId) {
+            setTimeout(() => {
+                const el = document.getElementById(`booking-${highlightBookingId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 300);
+        }
+    }, [loading, highlightBookingId]);
 
     const changeDay = (days: number) => {
         const next = new Date(currentDate);
@@ -127,17 +138,26 @@ export default function AdminCalendar({ courts, initialDate, hideToolbar = false
                                 <div className="space-y-3">
                                     {courtData.slots.map((slot: any, idx: number) => {
                                         const isFree = slot.status === 'FREE';
+                                        const isHighlighted = slot.booking?.id && slot.booking.id === highlightBookingId;
+                                        
                                         return (
                                             <div
                                                 key={idx}
-                                                className={`group flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 ${isFree
+                                                id={slot.booking?.id ? `booking-${slot.booking.id}` : undefined}
+                                                className={`group flex items-center justify-between p-3 rounded-2xl border transition-all duration-500 relative overflow-hidden ${isFree
                                                         ? 'bg-emerald-50/30 border-emerald-100 dark:bg-slate-800/30 dark:border-slate-800'
-                                                        : 'bg-slate-50 border-slate-200 dark:bg-slate-800/80 dark:border-slate-700'
+                                                        : isHighlighted 
+                                                            ? 'bg-amber-50 border-amber-500 ring-4 ring-amber-500/20 shadow-xl scale-[1.02] z-10 animate-pulse dark:bg-amber-900/30 dark:border-amber-500'
+                                                            : 'bg-slate-50 border-slate-200 dark:bg-slate-800/80 dark:border-slate-700'
                                                     }`}
                                             >
+                                                {isHighlighted && (
+                                                    <div className="absolute top-0 left-0 w-1 h-full bg-amber-500 animate-pulse"></div>
+                                                )}
+                                                
                                                 {/* BLOQUE HORA */}
                                                 <div className="min-w-[70px] text-center">
-                                                    <span className={`text-lg font-black ${isFree ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                    <span className={`text-lg font-black ${isFree ? 'text-emerald-700 dark:text-emerald-400' : isHighlighted ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>
                                                         {slot.time}
                                                     </span>
                                                 </div>
@@ -153,8 +173,9 @@ export default function AdminCalendar({ courts, initialDate, hideToolbar = false
                                                             <div className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
                                                                 {slot.booking?.user?.name || (slot.status === 'BLOCKED' ? 'Bloqueo Interno' : 'Cliente Local')}
                                                                 {slot.status === 'FIXED' && <Badge variant="secondary" className="text-[9px] bg-blue-100 text-blue-700 hover:bg-blue-200 px-1 py-0 shadow-none">Fijo</Badge>}
+                                                                {isHighlighted && <Badge className="text-[9px] bg-amber-500 hover:bg-amber-600 border-none px-1 py-0 shadow-none">¡NUEVO!</Badge>}
                                                             </div>
-                                                            <div className="text-xs text-slate-500 font-medium">{slot.booking?.user?.phone}</div>
+                                                            <div className={`text-xs font-medium ${isHighlighted ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500'}`}>{slot.booking?.user?.phone}</div>
                                                         </div>
                                                     )}
                                                 </div>
