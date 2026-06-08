@@ -28,12 +28,15 @@ export default function PushConfig() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(reg => {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
         setSwRegistration(reg);
         reg.pushManager.getSubscription().then(sub => {
           setIsSubscribed(!!sub);
           setLoading(false);
         });
+      }).catch(err => {
+        console.error('Service Worker registration failed:', err);
+        setLoading(false);
       });
     } else {
       setLoading(false);
