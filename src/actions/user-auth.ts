@@ -81,6 +81,10 @@ export async function loginUser(formData: FormData) {
             return { success: false, error: "Credenciales incorrectas." };
         }
 
+        if (user.isActive === false) {
+            return { success: false, error: "Tu cuenta ha sido suspendida. Contacta a la administración." };
+        }
+
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) {
             return { success: false, error: "Credenciales incorrectas." };
@@ -129,8 +133,15 @@ export async function getUserSession() {
     try {
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, name: true, lastName: true, dni: true, phone: true, email: true, category: true, role: true }
+            select: { id: true, name: true, lastName: true, dni: true, phone: true, email: true, category: true, role: true, isActive: true }
         });
+        
+        if (user && user.isActive === false) {
+            // Kick out blocked user
+            cookieStore.delete(SESSION_COOKIE_NAME);
+            return null;
+        }
+
         return user;
     } catch (error) {
         console.error("Session error:", error);

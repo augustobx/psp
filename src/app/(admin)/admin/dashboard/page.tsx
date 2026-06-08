@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, DollarSign, Trophy, MapPin, Clock, ArrowRight, Plus, Calendar as CalendarIcon, CheckCircle2, AlertCircle, XCircle, LayoutGrid } from "lucide-react";
 import Link from "next/link";
+import AutoRefresh from "@/components/AutoRefresh";
 
 export default async function AdminDashboard() {
   const [statsRes, snapshotRes] = await Promise.all([
@@ -41,6 +42,7 @@ export default async function AdminDashboard() {
 
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+      <AutoRefresh intervalMs={30000} />
       
       {/* HEADER & SALUDO */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
