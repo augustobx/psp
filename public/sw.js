@@ -8,12 +8,23 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('push', function (event) {
   if (!event.data) return;
-  const data = JSON.parse(event.data.text());
+  
+  let data;
+  try {
+    data = JSON.parse(event.data.text());
+  } catch (err) {
+    // Si no es JSON (ej. pruebas de DevTools), lo mostramos como texto simple
+    data = {
+      title: 'Notificación del Sistema',
+      body: event.data.text(),
+      url: '/admin/dashboard'
+    };
+  }
   
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: '/globe.svg', // Basic icon
+      icon: '/globe.svg',
       badge: '/globe.svg',
       vibrate: [200, 100, 200],
       data: {
