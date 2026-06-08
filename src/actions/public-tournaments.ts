@@ -81,3 +81,33 @@ export async function registerTeam(tournamentId: string, categoryId: string, dat
     return { success: false, error: 'Error al inscribir la pareja' };
   }
 }
+
+export async function searchRegisteredUsers(query: string) {
+  try {
+    if (!query || query.length < 2) return { success: true, data: [] };
+
+    const users = await prisma.user.findMany({
+      where: {
+        role: 'PLAYER',
+        password: { not: null }, // Solo usuarios registrados
+        OR: [
+          { name: { contains: query } },
+          { lastName: { contains: query } },
+          { email: { contains: query } }
+        ]
+      },
+      select: {
+        id: true,
+        name: true,
+        lastName: true,
+        phone: true,
+      },
+      take: 5
+    });
+
+    return { success: true, data: users };
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: 'Error al buscar usuarios' };
+  }
+}

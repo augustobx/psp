@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { registerTeam } from '@/actions/public-tournaments';
+import { useState, useEffect } from 'react';
+import { registerTeam, searchRegisteredUsers } from '@/actions/public-tournaments';
 import { createTournamentPaymentPreference } from '@/actions/payments';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Search } from 'lucide-react';
 import Link from 'next/link';
 
 type Props = {
@@ -29,6 +29,27 @@ export default function TournamentRegistrationForm({ tournamentId, categories, r
     player2Name: '',
     player2Phone: '',
   });
+
+  const [p2SearchQuery, setP2SearchQuery] = useState('');
+  const [p2SearchResults, setP2SearchResults] = useState<any[]>([]);
+  const [isSearchingP2, setIsSearchingP2] = useState(false);
+  const [showP2Dropdown, setShowP2Dropdown] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (p2SearchQuery.length >= 2 && showP2Dropdown) {
+        setIsSearchingP2(true);
+        const res = await searchRegisteredUsers(p2SearchQuery);
+        if (res.success && res.data) {
+          setP2SearchResults(res.data);
+        }
+        setIsSearchingP2(false);
+      } else {
+        setP2SearchResults([]);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [p2SearchQuery, showP2Dropdown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,9 +135,53 @@ export default function TournamentRegistrationForm({ tournamentId, categories, r
 
         <div className="space-y-4">
           <h3 className="font-bold text-blue-400 border-b border-slate-700/50 pb-2">Jugador 2</h3>
-          <div className="space-y-2">
-            <Label className="text-slate-300 text-sm">Nombre y Apellido</Label>
-            <Input required value={formData.player2Name} onChange={e => setFormData({ ...formData, player2Name: e.target.value })} className="rounded-xl h-11 bg-slate-700/50 border-slate-600 text-white" />
+          <div className="space-y-2 relative">
+            <Label className="text-slate-300 text-sm flex items-center gap-2">
+              <Search className="w-3 h-3 text-slate-400" /> 
+              Buscar por Nombre o Apellido
+            </Label>
+            <Input 
+              required 
+              value={formData.player2Name} 
+              onChange={e => {
+                setFormData({ ...formData, player2Name: e.target.value });
+                setP2SearchQuery(e.target.value);
+                setShowP2Dropdown(true);
+              }}
+              onFocus={() => { if(formData.player2Name.length >= 2) setShowP2Dropdown(true); }}
+              onBlur={() => setTimeout(() => setShowP2Dropdown(false), 200)}
+              className="rounded-xl h-11 bg-slate-700/50 border-slate-600 text-white" 
+              placeholder="Ej: Juan Perez"
+            />
+            {showP2Dropdown && (p2SearchResults.length > 0 || isSearchingP2) && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto">
+                {isSearchingP2 ? (
+                  <div className="p-4 text-sm text-slate-400 text-center flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 rounded-full border-2 border-slate-400 border-t-transparent animate-spin" /> Buscando...
+                  </div>
+                ) : (
+                  p2SearchResults.map(user => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      className="w-full text-left px-4 py-3 hover:bg-slate-700 transition-colors border-b border-slate-700/50 last:border-0"
+                      onClick={() => {
+                        setFormData({ 
+                          ...formData, 
+                          player2Name: `${user.name} ${user.lastName || ''}`.trim(),
+                          player2Phone: user.phone || ''
+                        });
+                        setP2SearchQuery('');
+                        setShowP2Dropdown(false);
+                      }}
+                    >
+                      <div className="font-bold text-white text-sm">{user.name} {user.lastName}</div>
+                      <div className="text-slate-400 text-xs">{user.phone}</div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <Label className="text-slate-300 text-sm">Teléfono WhatsApp</Label>
