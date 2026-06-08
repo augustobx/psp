@@ -52,7 +52,7 @@ export async function registerUser(formData: FormData) {
         cookieStore.set(SESSION_COOKIE_NAME, user.id, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            maxAge: 60 * 60 * 24 * 30, // 30 days
+            maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
             path: "/",
         });
 
@@ -90,7 +90,7 @@ export async function loginUser(formData: FormData) {
         cookieStore.set(SESSION_COOKIE_NAME, user.id, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            maxAge: 60 * 60 * 24 * 30, // 30 days
+            maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
             path: "/",
         });
 
@@ -110,11 +110,10 @@ export async function logoutUser(formData?: FormData) {
 
 export async function skipRegistration() {
     const cookieStore = await cookies();
-    // Use a session cookie to remember the skip state
+    // Cookie de sesión (sin maxAge) para que se borre al cerrar el navegador
     cookieStore.set("psp_skip_registration", "true", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 60 * 24, // 1 day skip
         path: "/",
     });
     revalidatePath("/");
