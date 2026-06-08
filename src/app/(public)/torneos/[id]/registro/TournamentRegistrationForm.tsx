@@ -13,9 +13,10 @@ type Props = {
   tournamentId: string;
   categories: { id: string; name: string; teamCount: number }[];
   requireDeposit: boolean;
+  session: any;
 };
 
-export default function TournamentRegistrationForm({ tournamentId, categories, requireDeposit }: Props) {
+export default function TournamentRegistrationForm({ tournamentId, categories, requireDeposit, session }: Props) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,8 +24,8 @@ export default function TournamentRegistrationForm({ tournamentId, categories, r
   const [formData, setFormData] = useState({
     categoryId: categories.length === 1 ? categories[0].id : '',
     teamName: '',
-    player1Name: '',
-    player1Phone: '',
+    player1Name: session?.name ? `${session.name} ${session.lastName || ''}`.trim() : '',
+    player1Phone: session?.phone || '',
     player2Name: '',
     player2Phone: '',
   });

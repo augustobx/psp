@@ -73,10 +73,12 @@ export default async function HomePage() {
                 
                 {/* BURBUJA DE TORNEO ACTIVO */}
                 {settings?.tournamentsEnabled && activeTournament && (
-                  <Link href={`/torneos/${activeTournament.id}`} className="absolute bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2 group z-50">
-                    <Trophy className="w-6 h-6 animate-pulse text-yellow-300" />
-                    <span className="font-bold hidden group-hover:block transition-all pr-2 text-sm">{activeTournament.status === 'ONGOING' ? '¡Torneo en Juego!' : 'Torneo Abierto'}</span>
-                  </Link>
+                  <div className="absolute bottom-[110px] left-0 right-0 flex justify-center z-50 pointer-events-none">
+                    <Link href={`/torneos/${activeTournament.id}`} className="bg-gradient-to-r from-yellow-500 to-amber-600 text-white px-6 py-3 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] hover:scale-105 transition-all flex items-center gap-3 ring-4 ring-yellow-500/30 pointer-events-auto">
+                      <Trophy className="w-5 h-5 animate-bounce text-yellow-100" />
+                      <span className="font-bold text-sm tracking-wide">{activeTournament.status === 'ONGOING' ? '¡Torneo en Juego!' : 'Torneo Disponible'}</span>
+                    </Link>
+                  </div>
                 )}
             </div>
         </div>

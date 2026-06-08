@@ -58,11 +58,31 @@ export default async function PublicTournamentDetail(props: { params: Promise<{ 
               </div>
             </div>
 
-            {tournament.status === 'REGISTRATION' && tournament.categories.length > 0 && (
-              <Link href={`/torneos/${tournament.id}/registro`} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold py-4 px-8 rounded-2xl transition-all shadow-lg shadow-emerald-500/30 text-center active:scale-95 flex items-center justify-center gap-2">
-                <Users className="w-5 h-5" /> Inscribir Pareja
-              </Link>
-            )}
+            {tournament.status === 'REGISTRATION' && tournament.categories.length > 0 && (() => {
+              const totalTeams = tournament.categories.reduce((acc: number, cat: any) => acc + (cat.teams?.length || 0), 0);
+              const isFull = tournament.maxTeams ? totalTeams >= tournament.maxTeams : false;
+              
+              return (
+                <div className="flex flex-col items-end gap-2">
+                  <Link 
+                    href={isFull ? '#' : `/torneos/${tournament.id}/registro`} 
+                    className={`font-bold py-4 px-8 rounded-2xl transition-all shadow-lg text-center flex items-center justify-center gap-2 ${
+                      isFull 
+                        ? 'bg-slate-700 text-slate-400 cursor-not-allowed' 
+                        : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-emerald-500/30 active:scale-95'
+                    }`}
+                  >
+                    <Users className="w-5 h-5" /> 
+                    {isFull ? 'Cupos Agotados' : 'Inscribir Pareja'}
+                  </Link>
+                  {tournament.maxTeams && (
+                    <span className={`text-sm font-medium ${isFull ? 'text-red-400' : 'text-emerald-400'}`}>
+                      {totalTeams} / {tournament.maxTeams} cupos ocupados
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
 
             {tournament.status === 'ONGOING' && (
               <div className="bg-red-500/15 text-red-400 font-bold py-3 px-6 rounded-2xl border border-red-500/20 flex items-center gap-2">
