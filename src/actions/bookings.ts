@@ -76,25 +76,37 @@ export async function createBooking(data: {
     // Importante: Normalizamos el teléfono para que PWA y WhatsApp coincidan siempre
     const normalizedPhone = normalizePhoneForWhatsApp(data.phone);
 
-    // Buscar o crear usuario ANTES de la transacción (no es crítico para race condition)
-    let user = await prisma.user.findFirst({
-      where: { phone: normalizedPhone } // <-- CORREGIDO: Buscamos por teléfono
-    });
+    // Buscar si hay sesión activa (usuario registrado)
+    const { getUserSession } = await import('@/actions/user-auth');
+    const session = await getUserSession();
+
+    let user = null;
+
+    if (session) {
+      user = await prisma.user.findUnique({ where: { id: session.id } });
+    }
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: `${normalizedPhone}@cliente.psp`, // <-- CORREGIDO: Generamos un email de sistema
-          name: data.name,
-          phone: normalizedPhone,
-          role: 'PLAYER',
-        }
+      // Buscar o crear usuario ANTES de la transacción (no es crítico para race condition)
+      user = await prisma.user.findFirst({
+        where: { phone: normalizedPhone }
       });
-    } else {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { name: data.name, phone: normalizedPhone }
-      });
+
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email: `${normalizedPhone}@cliente.psp`,
+            name: data.name,
+            phone: normalizedPhone,
+            role: 'PLAYER',
+          }
+        });
+      } else {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { name: data.name, phone: normalizedPhone }
+        });
+      }
     }
 
     // Obtener config
