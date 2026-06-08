@@ -102,11 +102,10 @@ export async function loginUser(formData: FormData) {
     }
 }
 
-export async function logoutUser() {
+export async function logoutUser(formData?: FormData) {
     const cookieStore = await cookies();
     cookieStore.delete(SESSION_COOKIE_NAME);
     revalidatePath("/");
-    return { success: true };
 }
 
 export async function skipRegistration() {
