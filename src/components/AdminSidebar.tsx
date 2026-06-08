@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { logoutAdmin } from '@/actions/auth';
-import { LayoutDashboard, Calendar, MapPin, CreditCard, Settings, Menu, X, LogOut, Trophy, ClipboardList, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, Calendar, MapPin, CreditCard, Settings, Menu, X, LogOut, Trophy, ClipboardList, CalendarDays, Users } from 'lucide-react';
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/admin/dashboard' },
@@ -12,6 +12,7 @@ const menuItems = [
   { name: 'Abonos Fijos', icon: CalendarDays, href: '/admin/abonos' },
   { name: 'Historial', icon: ClipboardList, href: '/admin/history' },
   { name: 'Canchas', icon: MapPin, href: '/admin/courts' },
+  { name: 'Usuarios', icon: Users, href: '/admin/usuarios' },
   { name: 'Gastos', icon: CreditCard, href: '/admin/expenses' },
   { name: 'Torneos', icon: Trophy, href: '/admin/torneos' },
   { name: 'Configuración', icon: Settings, href: '/admin/settings' },
