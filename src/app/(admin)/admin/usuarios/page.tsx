@@ -3,7 +3,10 @@ import UsuariosClient from "./UsuariosClient";
 
 export default async function AdminUsuariosPage() {
     const users = await prisma.user.findMany({
-        where: { role: "PLAYER" },
+        where: { 
+            role: "PLAYER",
+            password: { not: null } // Solo mostrar usuarios registrados
+        },
         orderBy: { createdAt: "desc" },
         include: {
             _count: {
