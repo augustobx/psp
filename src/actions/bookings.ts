@@ -8,6 +8,15 @@ import { normalizePhoneForWhatsApp } from '@/lib/whatsapp/notifications';
 // 1. Obtener reservas por día (Para el Panel de Admin)
 export async function getBookingsByDate(dateStr: string) {
   try {
+    // AUTO-CANCELAR RESERVAS PENDIENTES EXPIRADAS (>5 min)
+    try {
+        const cutoff = new Date(Date.now() - 5 * 60 * 1000);
+        await prisma.booking.updateMany({
+            where: { status: 'PENDING', createdAt: { lt: cutoff } },
+            data: { status: 'CANCELLED' }
+        });
+    } catch(e) { console.error("Error auto-canceling pending bookings:", e); }
+
     const startOfDay = new Date(`${dateStr}T00:00:00-03:00`);
     const endOfDay = new Date(`${dateStr}T23:59:59.999-03:00`);
 

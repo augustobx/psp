@@ -10,6 +10,15 @@ export async function getDashboardStats() {
     const tomorrow = new Date(`${dateStr}T23:59:59.999-03:00`);
 
     try {
+        // AUTO-CANCELAR RESERVAS PENDIENTES EXPIRADAS (>5 min)
+        try {
+            const cutoff = new Date(Date.now() - 5 * 60 * 1000);
+            await prisma.booking.updateMany({
+                where: { status: 'PENDING', createdAt: { lt: cutoff } },
+                data: { status: 'CANCELLED' }
+            });
+        } catch(e) { console.error("Error auto-canceling pending bookings:", e); }
+
         const [
             todayBookingsCount,
             activeCourtsCount,

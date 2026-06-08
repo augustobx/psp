@@ -17,6 +17,15 @@ export async function getPublicCourts() {
 
 export async function getAvailableSlots(courtId: string, dateStr: string) {
     try {
+        // AUTO-CANCELAR RESERVAS PENDIENTES EXPIRADAS (>5 min)
+        try {
+            const cutoff = new Date(Date.now() - 5 * 60 * 1000);
+            await prisma.booking.updateMany({
+                where: { status: 'PENDING', createdAt: { lt: cutoff } },
+                data: { status: 'CANCELLED' }
+            });
+        } catch(e) { console.error("Error auto-canceling pending bookings:", e); }
+
         const [year, month, day] = dateStr.split('-').map(Number);
         const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 
