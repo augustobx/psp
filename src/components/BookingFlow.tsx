@@ -11,7 +11,7 @@ interface SlotData {
   status: string;
 }
 
-export default function BookingFlow({ courts, sysSettings }: { courts: any[], sysSettings?: any }) {
+export default function BookingFlow({ courts, sysSettings, session }: { courts: any[], sysSettings?: any, session?: any }) {
   const isDark = sysSettings?.theme === 'dark';
 
   // VARIABLES DINÁMICAS DESDE LA BASE DE DATOS
@@ -36,7 +36,17 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
   const [error, setError] = useState<string>('');
 
   // ESTADO RESTAURADO: Solo Nombre y Teléfono (Sin email)
-  const [formData, setFormData] = useState({ name: '', phone: '' });
+  const [formData, setFormData] = useState({ 
+    name: session ? `${session.name} ${session.lastName}`.trim() : '', 
+    phone: session?.phone || '' 
+  });
+
+  // Calculate if deposit is required for this specific user
+  const clientRequireDeposit = (() => {
+    if (sysSettings?.requireDeposit === false) return false;
+    if (sysSettings?.usersModuleEnabled && sysSettings?.requireDepositForRegistered === false && session) return false;
+    return true;
+  })();
 
   const upcomingDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
@@ -309,7 +319,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
               </div>
             </div>
 
-            {sysSettings?.requireDeposit !== false && (
+            {clientRequireDeposit && (
               <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50 p-3 rounded-xl text-sm text-amber-800 dark:text-amber-200 font-medium flex items-start">
                 <CreditCard className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5 text-amber-500" />
                 <span>Al confirmar serás redirigido a <strong>MercadoPago</strong> para pagar la seña. Tu turno se confirma automáticamente una vez acreditado el pago.</span>
@@ -325,9 +335,9 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
               <CheckCircle2 className="w-12 h-12 text-emerald-500 absolute" />
               <div className="w-24 h-24 border-4 border-emerald-500 rounded-full animate-ping opacity-20"></div>
             </div>
-            <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 mb-3">¡Reserva {sysSettings?.requireDeposit !== false ? 'registrada' : 'confirmada'}!</h3>
+            <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 mb-3">¡Reserva {clientRequireDeposit ? 'registrada' : 'confirmada'}!</h3>
             <p className="text-slate-500 font-medium px-4 leading-relaxed mb-6">
-              {sysSettings?.requireDeposit !== false
+              {clientRequireDeposit
                 ? `Tu turno queda confirmado una vez acreditado el pago. Te enviamos la confirmación por WhatsApp. ${sportEmoji}`
                 : `¡Tu lugar está asegurado! Te enviamos los detalles por WhatsApp. ${sportEmoji}`
               }
@@ -379,7 +389,7 @@ export default function BookingFlow({ courts, sysSettings }: { courts: any[], sy
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Procesando...
                 </>
-              ) : sysSettings?.requireDeposit !== false ? (
+              ) : clientRequireDeposit ? (
                 <>
                   <CreditCard className="w-5 h-5 mr-2" />
                   Pagar Seña y Reservar

@@ -23,6 +23,8 @@ export async function updateSystemSettings(formData: FormData) {
         const requireDeposit = formData.get("requireDeposit") === "on";
         const notifyAdmin = formData.get("notifyAdmin") === "on";
         const tournamentsEnabled = formData.get("tournamentsEnabled") === "on";
+        const usersModuleEnabled = formData.get("usersModuleEnabled") === "on";
+        const requireDepositForRegistered = formData.get("requireDepositForRegistered") === "on";
 
         const clubName = (formData.get("clubName") as string) || "";
         const topbarName = (formData.get("topbarName") as string) || "";
@@ -49,6 +51,7 @@ export async function updateSystemSettings(formData: FormData) {
             data: {
                 clubName, topbarName, contactPhone, courtPhone, apiPhone, mpAccessToken, reservationFee, sportEmoji, theme,
                 reservationsEnabled, whatsappReservations, pwaEnabled, autoWhatsapp, requireDeposit, notifyAdmin, tournamentsEnabled,
+                usersModuleEnabled, requireDepositForRegistered,
                 adminUser, adminPass,
                 splashLogo, splashName, splashDuration,
                 bubbleActive, bubbleText, bubbleColor, bubbleDuration

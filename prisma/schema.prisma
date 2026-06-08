@@ -47,9 +47,13 @@ enum TournamentFormat {
 // ==========================================
 model User {
   id              String             @id @default(uuid())
-  email           String             @unique
+  email           String?            @unique // Made optional in case they register by DNI only
+  dni             String?            @unique
+  password        String?
   name            String?
+  lastName        String?
   phone           String?
+  category        String?
   role            Role               @default(PLAYER)
   
   bookings        Booking[]
@@ -316,6 +320,10 @@ model SystemSetting {
   whatsappReservations Boolean  @default(true)
   notifyAdmin      Boolean  @default(true)
   tournamentsEnabled Boolean @default(true)
+  
+  // --- USERS MODULE ---
+  usersModuleEnabled Boolean @default(false)
+  requireDepositForRegistered Boolean @default(false)
 
   // --- SEGURIDAD ADMIN ---
   adminUser        String   @default("admin")

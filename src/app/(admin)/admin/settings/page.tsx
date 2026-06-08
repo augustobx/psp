@@ -124,6 +124,36 @@ export default async function SettingsPage() {
                             </CardContent>
                         </Card>
 
+                        {/* MÓDULO DE USUARIOS */}
+                        <Card className="border-emerald-200">
+                            <CardHeader className="bg-emerald-50/50 rounded-t-lg">
+                                <CardTitle>Módulo de Usuarios</CardTitle>
+                                <CardDescription>Registro de jugadores y beneficios.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4 pt-4">
+                                <div className="flex items-center justify-between p-3 border rounded-lg">
+                                    <div>
+                                        <Label htmlFor="usersModuleEnabled">Activar Módulo de Usuarios</Label>
+                                        <p className="text-xs text-gray-500">Permite a los jugadores registrarse e iniciar sesión.</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="usersModuleEnabled" name="usersModuleEnabled" defaultChecked={settings.usersModuleEnabled} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                    </label>
+                                </div>
+                                <div className="flex items-center justify-between p-3 border rounded-lg">
+                                    <div>
+                                        <Label htmlFor="requireDepositForRegistered">Exigir seña a registrados</Label>
+                                        <p className="text-xs text-gray-500">Si lo desactivas, los registrados reservan sin pagar seña.</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="requireDepositForRegistered" name="requireDepositForRegistered" defaultChecked={settings.requireDepositForRegistered} className="sr-only peer" />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                    </label>
+                                </div>
+                            </CardContent>
+                        </Card>
+
                         {/* SEGURIDAD ADMIN */}
                         <Card className="border-indigo-200">
                             <CardHeader className="bg-indigo-50/50 rounded-t-lg">

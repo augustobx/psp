@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CalendarSearch, Trophy } from 'lucide-react';
+import { CalendarSearch, Trophy, User } from 'lucide-react';
 
 export default function PublicNavbar({ sysSettings }: { sysSettings?: any }) {
   const topbarTitle = sysSettings?.topbarName || "PSP Padel";
@@ -28,12 +28,21 @@ export default function PublicNavbar({ sysSettings }: { sysSettings?: any }) {
                 <span className="hidden sm:inline">Torneos</span>
               </Link>
             )}
+            {sysSettings?.usersModuleEnabled && (
+              <Link
+                href="/perfil"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 rounded-full transition-colors"
+              >
+                <User className="w-4 h-4" />
+                <span className="hidden sm:inline">Perfil</span>
+              </Link>
+            )}
             <Link
               href="/mis-turnos"
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors"
             >
               <CalendarSearch className="w-4 h-4" />
-              <span className="hidden sm:inline">Mis Turnos</span>
+              <span className="hidden sm:inline">Buscar</span>
             </Link>
           </div>
         </div>

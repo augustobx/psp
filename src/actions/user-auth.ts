@@ -1,0 +1,141 @@
+"use server";
+
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
+
+const SESSION_COOKIE_NAME = "psp_user_session";
+
+export async function registerUser(formData: FormData) {
+    const name = formData.get("name") as string;
+    const lastName = formData.get("lastName") as string;
+    const dni = formData.get("dni") as string;
+    const phone = formData.get("phone") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    if (!name || !lastName || !dni || !phone || !password) {
+        return { success: false, error: "Todos los campos obligatorios deben estar completos." };
+    }
+
+    try {
+        // Find if DNI already exists
+        const existingByDni = await prisma.user.findUnique({ where: { dni } });
+        if (existingByDni) {
+            return { success: false, error: "El DNI ya está registrado." };
+        }
+
+        // Only check email if it's provided
+        if (email) {
+            const existingByEmail = await prisma.user.findUnique({ where: { email } });
+            if (existingByEmail) {
+                return { success: false, error: "El Email ya está registrado." };
+            }
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await prisma.user.create({
+            data: {
+                name,
+                lastName,
+                dni,
+                phone,
+                email: email || null,
+                password: hashedPassword,
+                role: "PLAYER",
+            }
+        });
+
+        const cookieStore = await cookies();
+        cookieStore.set(SESSION_COOKIE_NAME, user.id, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 60 * 60 * 24 * 30, // 30 days
+            path: "/",
+        });
+
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        console.error("Register error:", error);
+        return { success: false, error: "Error interno del servidor." };
+    }
+}
+
+export async function loginUser(formData: FormData) {
+    const dni = formData.get("dni") as string;
+    const password = formData.get("password") as string;
+
+    if (!dni || !password) {
+        return { success: false, error: "DNI y contraseña requeridos." };
+    }
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { dni }
+        });
+
+        if (!user || !user.password) {
+            return { success: false, error: "Credenciales incorrectas." };
+        }
+
+        const valid = await bcrypt.compare(password, user.password);
+        if (!valid) {
+            return { success: false, error: "Credenciales incorrectas." };
+        }
+
+        const cookieStore = await cookies();
+        cookieStore.set(SESSION_COOKIE_NAME, user.id, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 60 * 60 * 24 * 30, // 30 days
+            path: "/",
+        });
+
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        console.error("Login error:", error);
+        return { success: false, error: "Error interno del servidor." };
+    }
+}
+
+export async function logoutUser() {
+    const cookieStore = await cookies();
+    cookieStore.delete(SESSION_COOKIE_NAME);
+    revalidatePath("/");
+    return { success: true };
+}
+
+export async function skipRegistration() {
+    const cookieStore = await cookies();
+    // Use a session cookie to remember the skip state
+    cookieStore.set("psp_skip_registration", "true", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60 * 24, // 1 day skip
+        path: "/",
+    });
+    revalidatePath("/");
+    return { success: true };
+}
+
+export async function getUserSession() {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    
+    if (!userId) return null;
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, name: true, lastName: true, dni: true, phone: true, email: true, category: true, role: true }
+        });
+        return user;
+    } catch (error) {
+        console.error("Session error:", error);
+        return null;
+    }
+}

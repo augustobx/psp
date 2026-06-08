@@ -5,6 +5,9 @@ import BookingFlow from "@/components/BookingFlow";
 import PublicNavbar from "@/components/PublicNavbar";
 import Link from "next/link";
 import { Trophy } from "lucide-react";
+import { cookies } from "next/headers";
+import UserWelcomeSplash from "@/components/UserWelcomeSplash";
+import { getUserSession } from "@/actions/user-auth";
 
 export default async function HomePage() {
     const pubReq = await getPublicTournaments();
@@ -19,6 +22,19 @@ export default async function HomePage() {
 
     const isReservationsEnabled = settings?.reservationsEnabled ?? true;
     const isWhatsappReservations = settings?.whatsappReservations ?? true;
+    const usersModuleEnabled = settings?.usersModuleEnabled ?? false;
+    
+    const session = await getUserSession();
+
+    if (usersModuleEnabled) {
+        const cookieStore = await cookies();
+        const hasSession = !!session;
+        const hasSkipped = cookieStore.get("psp_skip_registration");
+
+        if (!hasSession && !hasSkipped) {
+            return <UserWelcomeSplash />;
+        }
+    }
 
     if (!isReservationsEnabled) {
         // NUEVA LÓGICA: Prioriza apiPhone, si está vacío usa contactPhone
@@ -53,7 +69,7 @@ export default async function HomePage() {
         <div className={`${theme} min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:items-center md:py-8`}>
             <div className="w-full max-w-md bg-white dark:bg-slate-900 min-h-screen md:min-h-0 md:rounded-[2.5rem] md:shadow-2xl md:border md:border-slate-200 dark:border-slate-800 relative overflow-hidden flex flex-col">
                 <PublicNavbar sysSettings={settings} />
-                <BookingFlow courts={courts} sysSettings={settings} />
+                <BookingFlow courts={courts} sysSettings={settings} session={session} />
                 
                 {/* BURBUJA DE TORNEO ACTIVO */}
                 {settings?.tournamentsEnabled && activeTournament && (

@@ -100,7 +100,13 @@ export async function createBooking(data: {
     // Obtener config
     const settings = await prisma.systemSetting.findUnique({ where: { id: 1 } });
     const fee = settings?.reservationFee ?? 0;
-    const requireDeposit = settings?.requireDeposit ?? false;
+    let requireDeposit = settings?.requireDeposit ?? false;
+
+    if (settings?.usersModuleEnabled && settings?.requireDepositForRegistered === false) {
+      if (user && user.password) {
+        requireDeposit = false;
+      }
+    }
 
     // ========== TRANSACCIÓN ATÓMICA — ANTI-DUPLICACIÓN ==========
     // Dentro de la transacción: verificar overlap + crear booking.
