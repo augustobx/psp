@@ -118,37 +118,37 @@ export default function TournamentZonesGeneratorModal({ category, tournamentStar
             {zonesConfig.map((zc, idx) => (
               <div key={idx} className="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
                 <h4 className="font-bold text-emerald-600 dark:text-emerald-400">{zc.name}</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Fecha de Inicio</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha de Inicio</Label>
                     <Input 
                       type="date" required value={zc.dateStr}
                       onChange={e => handleConfigChange(idx, 'dateStr', e.target.value)}
-                      className="h-9 text-sm bg-slate-50 dark:bg-slate-900"
+                      className="h-10 text-sm bg-slate-50 dark:bg-slate-900"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Hora de Inicio</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hora de Inicio</Label>
                     <Input 
                       type="time" required value={zc.timeStr}
                       onChange={e => handleConfigChange(idx, 'timeStr', e.target.value)}
-                      className="h-9 text-sm bg-slate-50 dark:bg-slate-900"
+                      className="h-10 text-sm bg-slate-50 dark:bg-slate-900"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Duración (min)</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Duración (min)</Label>
                     <Input 
                       type="number" required value={zc.intervalMinutes} min={10}
                       onChange={e => handleConfigChange(idx, 'intervalMinutes', e.target.value)}
-                      className="h-9 text-sm bg-slate-50 dark:bg-slate-900"
+                      className="h-10 text-sm bg-slate-50 dark:bg-slate-900"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Cancha (Opcional)</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cancha (Opcional)</Label>
                     <select
                       value={zc.courtId}
                       onChange={e => handleConfigChange(idx, 'courtId', e.target.value)}
-                      className="w-full h-9 px-2 text-sm rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 dark:text-white outline-none"
+                      className="w-full h-10 px-3 text-sm rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                       <option value="">A designar</option>
                       {courts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
