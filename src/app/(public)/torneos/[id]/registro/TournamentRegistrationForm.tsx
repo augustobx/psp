@@ -11,7 +11,7 @@ import Link from 'next/link';
 
 type Props = {
   tournamentId: string;
-  categories: { id: string; name: string; teamCount: number }[];
+  categories: { id: string; name: string; teamCount: number; groups?: any[]; matches?: any[] }[];
   requireDeposit: boolean;
   session: any;
 };
@@ -30,10 +30,16 @@ export default function TournamentRegistrationForm({ tournamentId, categories, r
     player2Phone: '',
   });
 
+  const [selectedTeamId, setSelectedTeamId] = useState('');
+
   const [p2SearchQuery, setP2SearchQuery] = useState('');
   const [p2SearchResults, setP2SearchResults] = useState<any[]>([]);
   const [isSearchingP2, setIsSearchingP2] = useState(false);
   const [showP2Dropdown, setShowP2Dropdown] = useState(false);
+
+  useEffect(() => {
+    setSelectedTeamId('');
+  }, [formData.categoryId]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -57,10 +63,24 @@ export default function TournamentRegistrationForm({ tournamentId, categories, r
       setError('Seleccioná una categoría');
       return;
     }
+
+    const selectedCatObj = categories.find(c => c.id === formData.categoryId);
+    const hasZones = selectedCatObj?.groups && selectedCatObj.groups.length > 0;
+
+    if (hasZones && !selectedTeamId) {
+      setError('Seleccioná una plaza en alguna de las zonas');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
-    const result = await registerTeam(tournamentId, formData.categoryId, formData);
+    const payload = {
+      ...formData,
+      teamId: hasZones ? selectedTeamId : undefined
+    };
+
+    const result = await registerTeam(tournamentId, formData.categoryId, payload);
 
     if (result.success && result.teamId) {
       if (requireDeposit) {
@@ -90,6 +110,9 @@ export default function TournamentRegistrationForm({ tournamentId, categories, r
     );
   }
 
+  const selectedCatObj = categories.find(c => c.id === formData.categoryId);
+  const hasZones = selectedCatObj?.groups && selectedCatObj.groups.length > 0;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* SELECTOR DE CATEGORÍA */}
@@ -107,6 +130,56 @@ export default function TournamentRegistrationForm({ tournamentId, categories, r
           ))}
         </select>
       </div>
+
+      {/* SELECTOR DE ZONAS Y PLAZAS */}
+      {hasZones && selectedCatObj && (
+        <div className="space-y-4">
+          <Label className="text-slate-300">Zonas y Plazas Disponibles</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {selectedCatObj.groups!.map(group => (
+              <div key={group.id} className="bg-slate-700/30 border border-slate-600 rounded-xl p-4">
+                <h4 className="font-bold text-emerald-400 mb-3">{group.name}</h4>
+                <div className="space-y-2">
+                  {group.teams.map((gt: any) => {
+                    const t = gt.team;
+                    const isLibre = t.player1?.phone === 'DUMMY_PLAZA';
+                    
+                    const matches = selectedCatObj.matches!.filter(m => m.team1Id === t.id || m.team2Id === t.id);
+                    const scheduleText = matches
+                      .filter(m => m.startTime)
+                      .map(m => new Date(m.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }))
+                      .join(', ');
+
+                    return (
+                      <div key={t.id} className={`p-3 rounded-lg border ${selectedTeamId === t.id ? 'bg-emerald-600/20 border-emerald-500' : 'bg-slate-800/50 border-slate-700'} transition-colors flex items-center justify-between`}>
+                        <div>
+                          <p className={`font-bold ${isLibre ? 'text-white' : 'text-slate-500 line-through'}`}>{t.name}</p>
+                          {isLibre && scheduleText && (
+                            <p className="text-xs text-slate-400 mt-1">Horarios: {scheduleText}</p>
+                          )}
+                        </div>
+                        {isLibre ? (
+                          <Button
+                            type="button"
+                            variant={selectedTeamId === t.id ? 'default' : 'outline'}
+                            size="sm"
+                            className={selectedTeamId === t.id ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10'}
+                            onClick={() => setSelectedTeamId(t.id)}
+                          >
+                            {selectedTeamId === t.id ? 'Seleccionada' : 'Elegir'}
+                          </Button>
+                        ) : (
+                          <span className="text-xs font-bold text-red-400 bg-red-400/10 px-2 py-1 rounded-md">Ocupada</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* NOMBRE PAREJA */}
       <div className="space-y-2">

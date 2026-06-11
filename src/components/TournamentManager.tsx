@@ -10,6 +10,7 @@ import { createCategory, deleteCategory, generateKnockoutBracket } from '@/actio
 import { updateTournamentStatus } from '@/actions/tournaments';
 import TournamentMesaControl from './TournamentMesaControl';
 import TournamentTeamsModal from './TournamentTeamsModal';
+import TournamentZonesGeneratorModal from './TournamentZonesGeneratorModal';
 import { Trash2, Zap, Users } from 'lucide-react';
 
 export default function TournamentManager({ tournament }: { tournament: any }) {
@@ -100,6 +101,7 @@ export default function TournamentManager({ tournament }: { tournament: any }) {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
+                      <TournamentZonesGeneratorModal category={cat} tournamentStartDate={new Date(tournament.startDate)} />
                       <Button
                         variant="secondary"
                         size="sm"

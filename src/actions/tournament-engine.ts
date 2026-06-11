@@ -229,3 +229,131 @@ export async function setMatchInProgress(matchId: string) {
     return { success: false, error: 'Error al actualizar estado' };
   }
 }
+
+// ============================================================
+// GENERAR ZONAS Y PLAZAS CON HORARIOS
+// ============================================================
+export async function generateZonesAndSchedule(categoryId: string, config: {
+  numZones: number;
+  teamsPerZone: number;
+  zonesConfig: {
+    name: string;
+    startTime: string; // ISO string
+    intervalMinutes: number;
+    courtId: string | null;
+  }[];
+}) {
+  try {
+    const category = await prisma.tournamentCategory.findUnique({ where: { id: categoryId } });
+    if (!category) throw new Error('Categoría no encontrada');
+
+    // 1. Obtener o crear Dummy User para Plazas
+    let dummyUser = await prisma.user.findFirst({ where: { phone: 'DUMMY_PLAZA' } });
+    if (!dummyUser) {
+      dummyUser = await prisma.user.create({
+        data: {
+          name: 'Plaza Libre',
+          phone: 'DUMMY_PLAZA',
+          role: 'PLAYER'
+        }
+      });
+    }
+    const dId = dummyUser.id;
+
+    await prisma.$transaction(async (tx) => {
+      // Borrar todos los grupos de esta categoría
+      await tx.tournamentGroup.deleteMany({ where: { categoryId } });
+      
+      // Borrar partidos previos (elimina Knockout y Groups)
+      await tx.tournamentMatch.deleteMany({ where: { categoryId } });
+
+      // Borrar todos los equipos placeholder previos
+      await tx.tournamentTeam.deleteMany({
+        where: { categoryId, player1Id: dId }
+      });
+
+      // 2. Crear Zonas y Plazas
+      for (let z = 0; z < config.numZones; z++) {
+        const zoneConf = config.zonesConfig[z];
+        
+        // Crear Grupo
+        const group = await tx.tournamentGroup.create({
+          data: {
+            categoryId,
+            name: zoneConf.name
+          }
+        });
+
+        const createdTeams = [];
+        // Crear Plazas (Teams)
+        for (let p = 1; p <= config.teamsPerZone; p++) {
+          const team = await tx.tournamentTeam.create({
+            data: {
+              categoryId,
+              name: `Plaza ${p}`,
+              player1Id: dId,
+            }
+          });
+          
+          // Vincular equipo al grupo
+          await tx.tournamentGroupTeam.create({
+            data: {
+              groupId: group.id,
+              teamId: team.id
+            }
+          });
+
+          createdTeams.push(team);
+        }
+
+        // 3. Algoritmo Round Robin
+        const t = [...createdTeams];
+        if (t.length % 2 !== 0) {
+          t.push(null as any); // BYE
+        }
+
+        const matches: { t1: any, t2: any }[] = [];
+        const n = t.length;
+        for (let round = 0; round < n - 1; round++) {
+          for (let i = 0; i < n / 2; i++) {
+            const t1 = t[i];
+            const t2 = t[n - 1 - i];
+            if (t1 && t2) {
+              matches.push({ t1, t2 });
+            }
+          }
+          // Rotar array
+          t.splice(1, 0, t.pop()!);
+        }
+
+        // Generar registros TournamentMatch
+        let matchIndex = 0;
+        for (const m of matches) {
+          const matchStart = new Date(zoneConf.startTime);
+          matchStart.setMinutes(matchStart.getMinutes() + matchIndex * zoneConf.intervalMinutes);
+
+          await tx.tournamentMatch.create({
+            data: {
+              categoryId,
+              groupId: group.id,
+              round: 1,
+              matchOrder: matchIndex + 1,
+              team1Id: m.t1.id,
+              team2Id: m.t2.id,
+              roundName: 'Fase de Grupos',
+              startTime: matchStart,
+              courtId: zoneConf.courtId || null,
+            }
+          });
+          matchIndex++;
+        }
+      }
+    });
+
+    revalidatePath(`/admin/torneos`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error in generateZonesAndSchedule:', error);
+    return { success: false, error: 'Error al generar zonas y fixture' };
+  }
+}

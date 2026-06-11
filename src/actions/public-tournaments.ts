@@ -26,14 +26,14 @@ export async function getTournamentDetails(id: string) {
       include: {
         categories: {
           include: {
-            teams: true,
+            teams: { include: { player1: true } },
             matches: {
               include: { team1: true, team2: true, winner: true },
               orderBy: [{ round: 'desc' }, { matchOrder: 'asc' }]
             },
             groups: {
               include: {
-                teams: { include: { team: true }, orderBy: { points: 'desc' } },
+                teams: { include: { team: { include: { player1: true } } }, orderBy: { points: 'desc' } },
                 matches: { include: { team1: true, team2: true } }
               }
             }
@@ -50,7 +50,6 @@ export async function getTournamentDetails(id: string) {
 
 export async function registerTeam(tournamentId: string, categoryId: string, data: any) {
   try {
-    // Buscar o crear usuarios (Player 1 y 2)
     const phone1 = normalizePhoneForWhatsApp(data.player1Phone);
     const phone2 = data.player2Phone ? normalizePhoneForWhatsApp(data.player2Phone) : null;
 
@@ -64,18 +63,37 @@ export async function registerTeam(tournamentId: string, categoryId: string, dat
       p2Id = p2.id;
     }
 
-    const team = await prisma.tournamentTeam.create({
-      data: {
-        categoryId,
-        name: data.teamName || `${data.player1Name} / ${data.player2Name}`,
-        player1Id: p1.id,
-        player2Id: p2Id,
-        phone1,
-        phone2,
-      }
-    });
+    let teamId;
 
-    return { success: true, teamId: team.id };
+    if (data.teamId) {
+      // Actualizar la plaza existente
+      const updatedTeam = await prisma.tournamentTeam.update({
+        where: { id: data.teamId },
+        data: {
+          name: data.teamName || `${data.player1Name} / ${data.player2Name}`,
+          player1Id: p1.id,
+          player2Id: p2Id,
+          phone1,
+          phone2,
+        }
+      });
+      teamId = updatedTeam.id;
+    } else {
+      // Crear un equipo nuevo
+      const team = await prisma.tournamentTeam.create({
+        data: {
+          categoryId,
+          name: data.teamName || `${data.player1Name} / ${data.player2Name}`,
+          player1Id: p1.id,
+          player2Id: p2Id,
+          phone1,
+          phone2,
+        }
+      });
+      teamId = team.id;
+    }
+
+    return { success: true, teamId };
   } catch (error) {
     console.error(error);
     return { success: false, error: 'Error al inscribir la pareja' };

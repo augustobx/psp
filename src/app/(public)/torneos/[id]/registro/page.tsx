@@ -39,6 +39,8 @@ export default async function TournamentRegistrationPage(props: { params: Promis
     id: c.id,
     name: c.name,
     teamCount: c.teams?.length || 0,
+    groups: c.groups,
+    matches: c.matches,
   }));
 
   return (
