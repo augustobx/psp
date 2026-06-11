@@ -6,6 +6,8 @@ import { CalendarDays, DollarSign, Trophy, MapPin, Clock, ArrowRight, Plus, Cale
 import Link from "next/link";
 import AutoRefresh from "@/components/AutoRefresh";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminDashboard() {
   const [statsRes, snapshotRes] = await Promise.all([
     getDashboardStats(),
