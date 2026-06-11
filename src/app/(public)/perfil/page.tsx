@@ -3,7 +3,7 @@ import { getSettings } from "@/actions/settings";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import PublicNavbar from "@/components/PublicNavbar";
-import { Trophy, CalendarDays, User, LogOut, Medal } from "lucide-react";
+import { Trophy, CalendarDays, User, LogOut, Medal, CalendarClock } from "lucide-react";
 import Link from "next/link";
 
 export default async function PerfilPage() {
@@ -31,6 +31,23 @@ export default async function PerfilPage() {
         include: {
             category: { include: { tournament: true } }
         }
+    });
+
+    const teamIds = teams.map(t => t.id);
+    const tournamentMatches = await prisma.tournamentMatch.findMany({
+        where: {
+            OR: [
+                { team1Id: { in: teamIds } },
+                { team2Id: { in: teamIds } }
+            ],
+            startTime: { not: null }
+        },
+        include: {
+            team1: true,
+            team2: true,
+            category: { include: { tournament: true } }
+        },
+        orderBy: { startTime: 'asc' }
     });
 
     return (
@@ -82,6 +99,38 @@ export default async function PerfilPage() {
                                             Categoría {team.category.name}
                                         </p>
                                     </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-4">
+                        <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-lg">
+                            <CalendarClock className="w-5 h-5 text-emerald-500" /> Mis Horarios de Partidos
+                        </h3>
+                        {tournamentMatches.length === 0 ? (
+                            <p className="text-sm text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl text-center">
+                                No tienes partidos programados con horario.
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {tournamentMatches.map((m: any) => (
+                                    <div key={m.id} className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h4 className="font-bold text-slate-800 dark:text-white">{m.category.tournament.name}</h4>
+                                            <span className="text-xs font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                                {m.roundName || 'Fase de Grupos'}
+                                            </span>
+                                        </div>
+                                        <div className="text-sm font-medium mb-2 dark:text-slate-300">
+                                            {m.team1?.name || 'TBD'} <span className="text-slate-400 font-normal">vs</span> {m.team2?.name || 'TBD'}
+                                        </div>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                            <CalendarClock className="w-4 h-4" />
+                                            {new Date(m.startTime).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })} • 
+                                            {new Date(m.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    </div>
                                 ))}
                             </div>
                         )}

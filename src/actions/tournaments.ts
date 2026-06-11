@@ -32,7 +32,7 @@ export async function getTournamentFull(id: string) {
               include: { player1: true, player2: true }
             },
             matches: {
-              include: { team1: true, team2: true, winner: true },
+              include: { team1: true, team2: true, winner: true, group: true },
               orderBy: [{ round: 'asc' }, { matchOrder: 'asc' }]
             },
             groups: {
