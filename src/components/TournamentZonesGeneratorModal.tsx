@@ -76,13 +76,13 @@ export default function TournamentZonesGeneratorModal({ category, tournamentStar
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="secondary" size="sm" className="whitespace-nowrap">
-          <Settings className="w-4 h-4 mr-1" /> Generar Zonas
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+    <>
+      <Button variant="secondary" size="sm" className="whitespace-nowrap" onClick={() => setOpen(true)}>
+        <Settings className="w-4 h-4 mr-1" /> Generar Zonas
+      </Button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold dark:text-white flex items-center gap-2">
             Configurar Zonas y Horarios - {category.name}
@@ -169,5 +169,6 @@ export default function TournamentZonesGeneratorModal({ category, tournamentStar
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
