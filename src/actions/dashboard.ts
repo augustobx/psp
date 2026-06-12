@@ -28,13 +28,18 @@ export async function getDashboardStats() {
             prisma.booking.count({
                 where: {
                     startTime: { gte: today, lt: tomorrow },
+                    status: { notIn: ['CANCELLED', 'BLOCKED', 'FIXED'] },
+                    fixedBookingId: null
                 }
             }),
             prisma.court.count({
                 where: { isActive: true }
             }),
             prisma.booking.aggregate({
-                where: { status: 'PENDING' },
+                where: { 
+                    status: 'PENDING',
+                    fixedBookingId: null
+                },
                 _sum: { totalAmount: true }
             }),
             prisma.tournament.count({
@@ -68,6 +73,8 @@ export async function getTodaySnapshot() {
         const bookings = await prisma.booking.findMany({
             where: {
                 startTime: { gte: today, lt: tomorrow },
+                status: { notIn: ['CANCELLED', 'BLOCKED', 'FIXED'] },
+                fixedBookingId: null
             },
             include: {
                 court: true,
