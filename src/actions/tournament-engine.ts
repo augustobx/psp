@@ -357,3 +357,147 @@ export async function generateZonesAndSchedule(categoryId: string, config: {
     return { success: false, error: 'Error al generar zonas y fixture' };
   }
 }
+
+// ============================================================
+// GENERADOR DE CUADRO INTELIGENTE DESDE ZONAS
+// ============================================================
+export async function generateKnockoutFromZones(categoryId: string) {
+  try {
+    const category = await prisma.tournamentCategory.findUnique({
+      where: { id: categoryId },
+      include: {
+        matches: { where: { groupId: null } },
+        groups: {
+          include: {
+            teams: { include: { team: true }, orderBy: { points: 'desc' } }
+          }
+        }
+      }
+    });
+
+    if (!category) return { success: false, error: 'Categoría no encontrada.' };
+    const groups = category.groups;
+
+    if (category.matches.length > 0) {
+      await prisma.tournamentMatch.deleteMany({ where: { categoryId, groupId: null } });
+    }
+
+    const qualifiedTeams: any[] = [];
+    const firsts = groups.map(g => g.teams[0]?.team).filter(Boolean);
+    const seconds = groups.map(g => g.teams[1]?.team).filter(Boolean);
+
+    if (groups.length === 2) {
+      qualifiedTeams.push(firsts[0], seconds[1]); 
+      qualifiedTeams.push(firsts[1], seconds[0]); 
+    } else if (groups.length === 4) {
+      qualifiedTeams.push(firsts[0], seconds[1]); 
+      qualifiedTeams.push(firsts[2], seconds[3]); 
+      qualifiedTeams.push(firsts[1], seconds[0]); 
+      qualifiedTeams.push(firsts[3], seconds[2]); 
+    } else {
+      let i = 0;
+      while(i < firsts.length || i < seconds.length) {
+        if (firsts[i]) qualifiedTeams.push(firsts[i]);
+        if (seconds[firsts.length - 1 - i]) qualifiedTeams.push(seconds[firsts.length - 1 - i]);
+        i++;
+      }
+    }
+
+    const numTeams = qualifiedTeams.length;
+    let bracketSize = 2;
+    while (bracketSize < numTeams) bracketSize *= 2;
+    if (bracketSize < 4) bracketSize = 4; // Mínimo Semifinales
+    
+    while(qualifiedTeams.length < bracketSize) {
+      qualifiedTeams.push(null);
+    }
+
+    const totalRounds = Math.ceil(Math.log2(bracketSize));
+    const round1Matches: string[] = [];
+    let teamIdx = 0;
+    const roundNames: { [key: number]: string } = {};
+    
+    if (totalRounds === 1) { roundNames[1] = 'Final'; }
+    else if (totalRounds === 2) { roundNames[1] = 'Semifinal'; roundNames[2] = 'Final'; }
+    else if (totalRounds === 3) { roundNames[1] = 'Cuartos de Final'; roundNames[2] = 'Semifinal'; roundNames[3] = 'Final'; }
+    else {
+      for (let r = 1; r <= totalRounds; r++) {
+        if (r === totalRounds) roundNames[r] = 'Final';
+        else if (r === totalRounds - 1) roundNames[r] = 'Semifinal';
+        else if (r === totalRounds - 2) roundNames[r] = 'Cuartos de Final';
+        else roundNames[r] = `Ronda ${r}`;
+      }
+    }
+
+    const matchesPerRound1 = bracketSize / 2;
+    for (let i = 0; i < matchesPerRound1; i++) {
+      const t1 = qualifiedTeams[teamIdx] || null;
+      teamIdx++;
+      const t2 = qualifiedTeams[teamIdx] || null;
+      teamIdx++;
+
+      const match = await prisma.tournamentMatch.create({
+        data: {
+          categoryId,
+          round: 1,
+          matchOrder: i + 1,
+          team1Id: t1?.id || null,
+          team2Id: t2?.id || null,
+          roundName: roundNames[1] || 'Ronda 1',
+        }
+      });
+      round1Matches.push(match.id);
+    }
+
+    let prevRoundMatchIds = round1Matches;
+    for (let round = 2; round <= totalRounds; round++) {
+      const matchesThisRound = prevRoundMatchIds.length / 2;
+      const newRoundMatchIds: string[] = [];
+
+      for (let i = 0; i < matchesThisRound; i++) {
+        const match = await prisma.tournamentMatch.create({
+          data: {
+            categoryId,
+            round,
+            matchOrder: i + 1,
+            roundName: roundNames[round] || `Ronda ${round}`,
+          }
+        });
+        newRoundMatchIds.push(match.id);
+
+        await prisma.tournamentMatch.update({
+          where: { id: prevRoundMatchIds[i * 2] },
+          data: { nextMatchId: match.id }
+        });
+        await prisma.tournamentMatch.update({
+          where: { id: prevRoundMatchIds[i * 2 + 1] },
+          data: { nextMatchId: match.id }
+        });
+      }
+      prevRoundMatchIds = newRoundMatchIds;
+    }
+
+    revalidatePath(`/admin/torneos`);
+    return { success: true, message: `Cuadro generado inteligentemente desde zonas.` };
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: 'Error generando llaves desde zonas' };
+  }
+}
+
+// ============================================================
+// ASIGNACIÓN MANUAL DE EQUIPO EN EL CUADRO
+// ============================================================
+export async function updateMatchTeam(matchId: string, slot: 'team1Id' | 'team2Id', teamId: string | null) {
+  try {
+    await prisma.tournamentMatch.update({
+      where: { id: matchId },
+      data: { [slot]: teamId }
+    });
+    revalidatePath(`/admin/torneos`);
+    return { success: true };
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: 'Error al cambiar equipo' };
+  }
+}

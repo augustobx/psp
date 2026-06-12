@@ -100,7 +100,15 @@ export default function TournamentMesaControl({ tournament }: { tournament: any 
                         <Card key={m.id} className={`border-l-4 shadow-md hover:shadow-lg transition-shadow ${m.status === 'IN_PROGRESS' ? 'border-l-red-500' : 'border-l-blue-300'}`}>
                           <CardContent className="p-4 space-y-3">
                             <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">{m.categoryName}</span>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">{m.categoryName}</span>
+                                {m.startTime && (
+                                  <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {new Date(m.startTime).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
+                                  </span>
+                                )}
+                              </div>
                               <Badge variant={m.status === 'IN_PROGRESS' ? 'destructive' : 'secondary'} className="text-xs">
                                 {m.status === 'IN_PROGRESS' ? '🔴 EN VIVO' : m.roundName || `Ronda ${m.round}`}
                               </Badge>
