@@ -8,34 +8,41 @@ const globalForPrisma = globalThis as unknown as {
 // Aseguramos que el protocolo sea el correcto para el adapter sin tocar el .env original
 const connectionString = (process.env.DATABASE_URL || '').replace('mysql://', 'mariadb://');
 
-// Parsear la URL de conexión para extraer los componentes y agregar opciones de pool
-// DonWeb (hosting compartido) cierra conexiones idle agresivamente (~60-300s wait_timeout)
-function buildPoolConfig() {
+// Modificamos el connection string para inyectar configuraciones de resiliencia
+function getConnectionStringWithPoolOpts() {
   try {
     const url = new URL(connectionString);
-    return {
-      host: url.hostname,
-      port: Number(url.port) || 3306,
-      user: url.username,
-      password: decodeURIComponent(url.password),
-      database: url.pathname.replace('/', ''),
-
-      // === RESILIENCIA PARA HOSTING COMPARTIDO ===
-      connectionLimit: 5,        // Menos conexiones para no exceder el límite del hosting
-      acquireTimeout: 10000,     // 10s máximo para obtener una conexión del pool
-      idleTimeout: 30,           // Liberar conexiones idle cada 30s (antes que DonWeb las mate)
-      minimumIdle: 0,            // No mantener conexiones idle innecesarias
-      minDelayValidation: 500,   // Validar la conexión si fue usada hace más de 500ms
-      resetAfterUse: true,       // Reset de la conexión al devolverla al pool
-    };
+    
+    // En hosting compartido (DonWeb), la base de datos tiene límites muy estrictos de conexiones
+    // y mata las conexiones inactivas rápidamente.
+    // Next.js usa ~11 workers durante 'npm run build', lo que agota las conexiones si el límite es alto.
+    const isBuildPhase = process.env.npm_lifecycle_event === 'build';
+    
+    if (!url.searchParams.has('connectionLimit')) {
+      // 1 conexión por proceso durante build para no saturar DB. Max 3 en producción normal.
+      url.searchParams.set('connectionLimit', isBuildPhase ? '1' : '3');
+    }
+    if (!url.searchParams.has('acquireTimeout')) {
+      url.searchParams.set('acquireTimeout', '30000'); // 30s de paciencia (hostings compartidos pueden ser lentos)
+    }
+    if (!url.searchParams.has('idleTimeout')) {
+      url.searchParams.set('idleTimeout', '30'); // Liberar idle connections a los 30s
+    }
+    if (!url.searchParams.has('minDelayValidation')) {
+      url.searchParams.set('minDelayValidation', '500'); 
+    }
+    if (!url.searchParams.has('resetAfterUse')) {
+      url.searchParams.set('resetAfterUse', 'true');
+    }
+    
+    return url.toString();
   } catch {
-    // Fallback: si no se puede parsear, devolver el string original
     return connectionString;
   }
 }
 
-// El adapter recibe el PoolConfig con opciones de resiliencia
-const adapter = new PrismaMariaDb(buildPoolConfig());
+// El adapter ahora recibe el string de conexión con los parámetros de resiliencia de MariaDB
+const adapter = new PrismaMariaDb(getConnectionStringWithPoolOpts());
 
 export const prisma =
   globalForPrisma.prisma ??
